@@ -63,9 +63,13 @@ draft: false # true 则不会发布
 `name`、`icon`（emoji）、`description`、`url`（可选）、`repo`（可选）、`tags`、`year`、`order`（排序）。
 添加后会以「精选项目」区块显示在 GitHub 仓库列表上方。
 
-## 部署（wrangler Direct Upload，已配置好）
+## 部署（GitHub Actions 全自动，已配置好）
 
-本项目使用 Direct Upload 模式部署（`wrangler.toml` 已含 KV 绑定），更新站点只需两条命令：
+推送到 `main` 分支即自动构建部署；**每天北京时间 10:30 定时同步** GitHub 仓库列表；也可在 GitHub 仓库的 Actions 页手动 Run workflow。
+
+前置配置（一次性）：仓库 Settings → Secrets and variables → Actions → 添加 Secret `CLOUDFLARE_API_TOKEN`（在 Cloudflare Dashboard → My Profile → API Tokens 用 "Cloudflare Pages — Edit" 模板创建）。
+
+手动部署（备用）：
 
 ```sh
 npm run build
