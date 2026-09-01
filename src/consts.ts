@@ -17,8 +17,8 @@ export const SITE = {
 export const GISCUS = {
   repo: 'Ember1414/ember_space',
   repoId: 'R_kgDOUKa2iQ',
-  category: 'Announcements',
-  categoryId: 'DIC_kwDOUKa2ic4DEoDC',
+  category: 'General',
+  categoryId: 'DIC_kwDOUKa2ic4DEoDD',
   mapping: 'pathname',
   reactionsEnabled: '1',
 };
