@@ -27,4 +27,9 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { posts, projects };
+const about = defineCollection({
+  loader: glob({ pattern: 'about.md', base: './src/content' }),
+  schema: z.object({}),
+});
+
+export const collections = { posts, projects, about };

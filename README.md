@@ -21,6 +21,13 @@ npm run build    # 构建到 dist/ 并生成搜索索引
 npm run preview  # 本地预览构建产物（搜索可用，订阅 API 仅线上有效）
 ```
 
+## 修改关于页
+
+关于页的自我介绍在 **`src/content/about.md`**，直接用 Markdown 编辑（在 GitHub 网页上也能改）。
+改完推送 + 重新构建部署即可上线。
+
+页面下方的结构化信息（邮箱、GitHub、坐标等）在 `src/consts.ts` 的 `SITE` 中修改。
+
 ## 写文章
 
 在 `src/content/posts/` 下新建 Markdown 文件：

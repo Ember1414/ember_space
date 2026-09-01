@@ -8,7 +8,7 @@ export const SITE = {
   author: 'Ember',
   social: {
     github: 'https://github.com/Ember1414',
-    email: 'mailto:you@example.com',
+    email: 'mailto:2669788267@qq.com',
   },
 };
 
