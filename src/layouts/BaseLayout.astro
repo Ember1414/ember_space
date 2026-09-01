@@ -28,10 +28,9 @@ const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SIT
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <script is:inline>
-      // 防 FOUC：渲染前恢复主题偏好
+      // 防 FOUC：默认暗色（站点主打风格），用户手动切换后记住选择
       (function () {
-        var t = localStorage.getItem('theme');
-        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        var t = localStorage.getItem('theme') || 'dark';
         document.documentElement.dataset.theme = t;
       })();
       // 打字机前置：仅首页、且用户未偏好减弱动效时，先隐藏打字行；2.5s 兜底强制显示
