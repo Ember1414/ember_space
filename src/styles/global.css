@@ -15,8 +15,9 @@
   --code-bg: #0d1117;
   --selection: #7ee78733;
   --shadow: 0 8px 32px #00000066;
-  --glow: #7ee7871c;
-  --dot: #ffffff14;
+  --glow-1: #7ee78726;
+  --glow-2: #79c0ff1d;
+  --dot: #ffffff17;
 }
 
 :root[data-theme='light'] {
@@ -35,8 +36,9 @@
   --code-bg: #f2f4f7;
   --selection: #1a7f3729;
   --shadow: 0 8px 32px #1f232818;
-  --glow: #1a7f3716;
-  --dot: #1f232816;
+  --glow-1: #1a7f3724;
+  --glow-2: #0969da1a;
+  --dot: #1f232818;
 }
 
 /* ============ 基础 ============ */
@@ -66,7 +68,7 @@ body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
-/* 背景点缀：顶部光晕 + 点阵网格（固定，不随滚动重绘） */
+/* 背景点缀：不对称双光晕 + 对角渐隐点阵（固定，不随滚动重绘） */
 body::before,
 body::after {
   content: '';
@@ -76,12 +78,16 @@ body::after {
 }
 body::before {
   z-index: -2;
-  background: radial-gradient(ellipse 90% 55% at 50% -12%, var(--glow), transparent 70%);
+  background:
+    radial-gradient(ellipse 65% 50% at 12% -10%, var(--glow-1), transparent 62%),
+    radial-gradient(ellipse 55% 45% at 90% 112%, var(--glow-2), transparent 62%);
 }
 body::after {
   z-index: -1;
   background-image: radial-gradient(var(--dot) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(135deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 82%);
+  mask-image: linear-gradient(135deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 82%);
 }
 
 /* ============ 进入动画（滚动显现） ============ */
