@@ -15,8 +15,8 @@
   --code-bg: #0d1117;
   --selection: #7ee78733;
   --shadow: 0 8px 32px #00000066;
-  --glow: #7ee78710;
-  --dot: #ffffff08;
+  --glow: #7ee7871c;
+  --dot: #ffffff14;
 }
 
 :root[data-theme='light'] {
@@ -35,8 +35,8 @@
   --code-bg: #f2f4f7;
   --selection: #1a7f3729;
   --shadow: 0 8px 32px #1f232818;
-  --glow: #1a7f370d;
-  --dot: #1f23280d;
+  --glow: #1a7f3716;
+  --dot: #1f232816;
 }
 
 /* ============ 基础 ============ */
@@ -84,7 +84,7 @@ body::after {
   background-size: 28px 28px;
 }
 
-/* ============ 进入动画 ============ */
+/* ============ 进入动画（滚动显现） ============ */
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -95,8 +95,13 @@ body::after {
     transform: none;
   }
 }
-.anim {
-  animation: fade-up 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+/* 仅在 JS 可用且未偏好减弱动效时才初始隐藏（head 内联脚本加 js-anim 类），
+   进入视口后由 IntersectionObserver 加 is-visible 触发动画 */
+.js-anim .anim {
+  opacity: 0;
+}
+.js-anim .anim.is-visible {
+  animation: fade-up 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
 /* 打字机：脚本接管前隐藏整行，防止闪现完整文字 */
@@ -105,7 +110,10 @@ body::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim {
+  .js-anim .anim {
+    opacity: 1;
+  }
+  .js-anim .anim.is-visible {
     animation: none;
   }
   .js-typing .type-line {

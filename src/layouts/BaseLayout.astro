@@ -43,9 +43,18 @@ const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SIT
           ) {
             document.documentElement.classList.add('js-typing');
           }
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.classList.add('js-anim');
+          }
         } catch {}
         setTimeout(function () {
           document.documentElement.classList.remove('js-typing');
+          // 兜底：仅当 reveal 脚本未成功初始化时才强制显示（正常时 __revealOk 已置位）
+          if (!window.__revealOk) {
+            document.querySelectorAll('.anim').forEach(function (el) {
+              el.classList.add('is-visible');
+            });
+          }
         }, 2500);
       })();
     </script>
@@ -58,3 +67,31 @@ const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SIT
     <Footer />
   </body>
 </html>
+
+<script>
+  // 滚动显现：.anim 元素进入视口时触发 fade-up；元素自带的 animation-delay 依次错开
+  (function () {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('.anim'));
+    const root = document.documentElement;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced || !('IntersectionObserver' in window) || !root.classList.contains('js-anim')) {
+      els.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            (e.target as HTMLElement).classList.add('is-visible');
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+    );
+    els.forEach((el) => io.observe(el));
+    window.__revealOk = true;
+  })();
+</script>
