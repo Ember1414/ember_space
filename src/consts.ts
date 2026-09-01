@@ -15,10 +15,10 @@ export const SITE = {
 // giscus 评论配置：在 https://giscus.app 生成后填入。
 // repoId / categoryId 留空时，文章页会显示配置提示而不是评论区。
 export const GISCUS = {
-  repo: '',
-  repoId: '',
+  repo: 'Ember1414/ember_space',
+  repoId: 'R_kgDOUKa2iQ',
   category: 'Announcements',
-  categoryId: '',
+  categoryId: 'DIC_kwDOUKa2ic4DEoDC',
   mapping: 'pathname',
   reactionsEnabled: '1',
 };
