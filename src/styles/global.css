@@ -16,7 +16,7 @@
   --selection: #7ee78733;
   --shadow: 0 8px 32px #00000066;
   --glow-1: #7ee78726;
-  --glow-2: #79c0ff1d;
+  --glow-2: #79c0ff2e;
   --dot: #ffffff17;
 }
 
@@ -37,7 +37,7 @@
   --selection: #1a7f3729;
   --shadow: 0 8px 32px #1f232818;
   --glow-1: #1a7f3724;
-  --glow-2: #0969da1a;
+  --glow-2: #0969da26;
   --dot: #1f232818;
 }
 
@@ -79,8 +79,8 @@ body::after {
 body::before {
   z-index: -2;
   background:
-    radial-gradient(ellipse 65% 50% at 12% -10%, var(--glow-1), transparent 62%),
-    radial-gradient(ellipse 55% 45% at 90% 112%, var(--glow-2), transparent 62%);
+    radial-gradient(ellipse 60% 48% at 12% -8%, var(--glow-1), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 95% 96%, var(--glow-2), transparent 70%);
 }
 body::after {
   z-index: -1;
@@ -306,7 +306,9 @@ main.container {
 
 .site-footer {
   border-top: 1px solid var(--border);
-  background: var(--bg-soft);
+  background: color-mix(in srgb, var(--bg-soft) 55%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .footer-inner {
   max-width: 860px;
