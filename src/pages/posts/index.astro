@@ -8,9 +8,9 @@ const posts = (await getCollection('posts', ({ data }) => !data.draft))
 ---
 
 <BaseLayout title="文章" description="全部博客文章列表">
-  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> ls ./posts</h1>
-  <p class="page-sub">共 {posts.length} 篇</p>
+  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> ls ./posts</h1>
+  <p class="page-sub anim" style="animation-delay: 0.08s;">共 {posts.length} 篇</p>
   <div class="post-list">
-    {posts.map((post) => <PostCard post={post} />)}
+    {posts.map((post, i) => <PostCard post={post} delay={Math.min(0.12 + i * 0.06, 0.5)} />)}
   </div>
 </BaseLayout>

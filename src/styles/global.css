@@ -15,6 +15,8 @@
   --code-bg: #0d1117;
   --selection: #7ee78733;
   --shadow: 0 8px 32px #00000066;
+  --glow: #7ee78710;
+  --dot: #ffffff08;
 }
 
 :root[data-theme='light'] {
@@ -33,6 +35,8 @@
   --code-bg: #f2f4f7;
   --selection: #1a7f3729;
   --shadow: 0 8px 32px #1f232818;
+  --glow: #1a7f370d;
+  --dot: #1f23280d;
 }
 
 /* ============ 基础 ============ */
@@ -60,6 +64,56 @@ body {
   line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   transition: background 0.25s ease, color 0.25s ease;
+}
+
+/* 背景点缀：顶部光晕 + 点阵网格（固定，不随滚动重绘） */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+body::before {
+  z-index: -2;
+  background: radial-gradient(ellipse 90% 55% at 50% -12%, var(--glow), transparent 70%);
+}
+body::after {
+  z-index: -1;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ============ 进入动画 ============ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim {
+  animation: fade-up 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* 打字机：脚本接管前隐藏整行，防止闪现完整文字 */
+.js-typing .type-line {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim {
+    animation: none;
+  }
+  .js-typing .type-line {
+    opacity: 1;
+  }
+  .cursor {
+    animation: none;
+  }
 }
 
 ::selection {

@@ -14,7 +14,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
 ---
 
 <BaseLayout>
-  <section class="hero">
+  <section class="hero anim">
     <div class="term">
       <div class="term-bar">
         <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
@@ -22,7 +22,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
       </div>
       <div class="term-body">
         <p class="prompt" style="margin: 0 0 0.6rem;">whoami</p>
-        <h1>&gt; 你好，我是 <span class="name">{SITE.author}</span><span class="cursor" aria-hidden="true"></span></h1>
+        <h1 class="type-line" aria-label="> 你好，我是 Ember">&gt; 你好，我是 <span class="name">{SITE.author}</span><span class="cursor" aria-hidden="true"></span></h1>
         <p class="out">{SITE.tagline}。</p>
         <p class="muted">// {SITE.description}</p>
         <p class="prompt" style="margin: 0.8rem 0 0;">ls ./links</p>
@@ -36,7 +36,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
     </div>
   </section>
 
-  <section>
+  <section class="anim" style="animation-delay: 0.15s;">
     <div class="section-head">
       <h2>最新文章</h2>
       <a href="/posts/">查看全部 →</a>
@@ -46,7 +46,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
     </div>
   </section>
 
-  <section style="margin-top: 3rem;">
+  <section class="anim" style="animation-delay: 0.28s; margin-top: 3rem;">
     <div class="section-head">
       <h2>我的项目</h2>
       <a href="/projects/">查看全部 →</a>
@@ -56,3 +56,38 @@ const repos = (await getGitHubRepos()).slice(0, 4);
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  // 首页打字机："> 你好，我是 Ember" 逐字打出
+  (function () {
+    const h1 = document.querySelector<HTMLElement>('.type-line');
+    if (!h1) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const prefix = h1.firstChild as Text;
+    const name = h1.querySelector<HTMLElement>('.name');
+    if (!name) return;
+
+    if (reduced) {
+      document.documentElement.classList.remove('js-typing');
+      return;
+    }
+
+    const prefixText = prefix.textContent ?? '';
+    const nameText = name.textContent ?? '';
+    prefix.textContent = '';
+    name.textContent = '';
+    document.documentElement.classList.remove('js-typing');
+
+    const total = prefixText.length + nameText.length;
+    let step = 0;
+    (function tick() {
+      step++;
+      if (step <= prefixText.length) {
+        prefix.textContent = prefixText.slice(0, step);
+      } else {
+        name.textContent = nameText.slice(0, step - prefixText.length);
+      }
+      if (step < total) setTimeout(tick, 70);
+    })();
+  })();
+</script>

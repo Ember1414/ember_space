@@ -3,10 +3,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
 <BaseLayout title="搜索" description="站内全文搜索">
-  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> grep -rn "" .</h1>
-  <p class="page-sub">输入关键词，全文搜索所有文章</p>
+  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> grep -rn "" .</h1>
+  <p class="page-sub anim" style="animation-delay: 0.08s;">输入关键词，全文搜索所有文章</p>
 
-  <div class="search-box">
+  <div class="search-box anim" style="animation-delay: 0.15s;">
     <input
       type="search"
       id="search-input"

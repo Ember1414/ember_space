@@ -12,11 +12,11 @@ const repos = await getGitHubRepos();
 ---
 
 <BaseLayout title="项目" description="我做过的项目与开源仓库">
-  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> ls ./projects</h1>
-  <p class="page-sub">做过的东西，都在这里</p>
+  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> ls ./projects</h1>
+  <p class="page-sub anim" style="animation-delay: 0.08s;">做过的东西，都在这里</p>
 
   {featured.length > 0 && (
-    <section>
+    <section class="anim" style="animation-delay: 0.15s;">
       <div class="section-head">
         <h2>精选项目</h2>
       </div>
@@ -26,7 +26,7 @@ const repos = await getGitHubRepos();
     </section>
   )}
 
-  <section style={featured.length > 0 ? 'margin-top: 3rem;' : ''}>
+  <section class="anim" style={`animation-delay: ${featured.length > 0 ? '0.28' : '0.15'}s; ${featured.length > 0 ? 'margin-top: 3rem;' : ''}`}>
     <div class="section-head">
       <h2>GitHub 仓库</h2>
       <a href={SITE.social.github} target="_blank" rel="noopener">全部仓库 ↗</a>

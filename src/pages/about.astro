@@ -5,9 +5,9 @@ import { SITE } from '../consts';
 ---
 
 <BaseLayout title="关于" description={`关于 ${SITE.author}`}>
-  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> cat about.txt</h1>
+  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> cat about.txt</h1>
 
-  <div class="term" style="margin-top: 1.5rem;">
+  <div class="term anim" style="animation-delay: 0.1s; margin-top: 1.5rem;">
     <div class="term-bar">
       <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
       <span class="term-title">about.txt — 简介</span>
@@ -24,7 +24,7 @@ import { SITE } from '../consts';
     </div>
   </div>
 
-  <ul class="about-facts">
+  <ul class="about-facts anim" style="animation-delay: 0.2s;">
     <li><span class="k">当前状态</span> 保持好奇，持续构建</li>
     <li><span class="k">技术偏好</span> TypeScript / Python / Rust，喜欢简单直接的方案</li>
     <li><span class="k">坐标</span> 地球 · UTC+8</li>

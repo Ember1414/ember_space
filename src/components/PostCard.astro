@@ -3,13 +3,14 @@ import type { CollectionEntry } from 'astro:content';
 
 interface Props {
   post: CollectionEntry<'posts'>;
+  delay?: number;
 }
 
-const { post } = Astro.props;
+const { post, delay = 0 } = Astro.props;
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 ---
 
-<article class="post-item">
+<article class="post-item anim" style={delay > 0 ? `animation-delay: ${delay}s;` : undefined}>
   <h3 class="post-item-title">
     <a href={`/posts/${post.id}/`}>{post.data.title}</a>
   </h3>

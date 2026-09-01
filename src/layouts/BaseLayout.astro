@@ -34,6 +34,20 @@ const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SIT
         if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         document.documentElement.dataset.theme = t;
       })();
+      // 打字机前置：仅首页、且用户未偏好减弱动效时，先隐藏打字行；2.5s 兜底强制显示
+      (function () {
+        try {
+          if (
+            location.pathname === '/' &&
+            !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ) {
+            document.documentElement.classList.add('js-typing');
+          }
+        } catch {}
+        setTimeout(function () {
+          document.documentElement.classList.remove('js-typing');
+        }, 2500);
+      })();
     </script>
   </head>
   <body>

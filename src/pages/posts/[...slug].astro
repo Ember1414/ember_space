@@ -44,7 +44,7 @@ const description = post.data.description || SITE.description;
 <BaseLayout title={post.data.title} description={description}>
   <div class="post-layout">
     <article>
-      <header class="post-header">
+      <header class="post-header anim">
         <p class="prompt" style="margin: 0; font-size: 0.85rem;">cat ./posts/{post.id}.md</p>
         <h1>{post.data.title}</h1>
         <div class="post-meta">
@@ -57,7 +57,7 @@ const description = post.data.description || SITE.description;
         </div>
       </header>
 
-      <div class="prose" data-pagefind-body>
+      <div class="prose anim" style="animation-delay: 0.12s;" data-pagefind-body>
         <Content />
       </div>
 

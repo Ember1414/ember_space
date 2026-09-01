@@ -15,9 +15,9 @@ const { posts } = Astro.props;
 ---
 
 <BaseLayout title={`标签：${tag}`} description={`标签「${tag}」下的全部文章`}>
-  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> grep -r #{tag}</h1>
-  <p class="page-sub">{posts.length} 篇 · <a href="/posts/">← 返回全部文章</a></p>
+  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> grep -r #{tag}</h1>
+  <p class="page-sub anim" style="animation-delay: 0.08s;">{posts.length} 篇 · <a href="/posts/">← 返回全部文章</a></p>
   <div class="post-list">
-    {posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()).map((post) => <PostCard post={post} />)}
+    {posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()).map((post, i) => <PostCard post={post} delay={Math.min(0.12 + i * 0.06, 0.5)} />)}
   </div>
 </BaseLayout>
