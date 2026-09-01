@@ -1,0 +1,55 @@
+---
+import { GISCUS } from '../consts';
+
+const configured = Boolean(GISCUS.repo && GISCUS.repoId && GISCUS.categoryId);
+---
+
+<div class="comments">
+  <p class="prompt" style="font-size: 0.88rem; margin: 0 0 1rem;">评论</p>
+  {configured ? (
+    <div id="giscus-container"></div>
+  ) : (
+    <div class="comments-hint">
+      评论系统（giscus）尚未配置。在 <code>src/consts.ts</code> 中填入
+      <code>GISCUS.repo / repoId / categoryId</code> 即可启用 ——
+      配置方法见 <a href="https://giscus.app" target="_blank" rel="noopener">giscus.app</a>。
+    </div>
+  )}
+</div>
+
+{configured && (
+  <script is:inline define:vars={{ GISCUS }}>
+    (function () {
+      var s = document.createElement('script');
+      var cfg = {
+        src: 'https://giscus.app/client.js',
+        'data-repo': GISCUS.repo,
+        'data-repo-id': GISCUS.repoId,
+        'data-category': GISCUS.category,
+        'data-category-id': GISCUS.categoryId,
+        'data-mapping': GISCUS.mapping || 'pathname',
+        'data-strict': '0',
+        'data-reactions-enabled': GISCUS.reactionsEnabled || '1',
+        'data-emit-metadata': '0',
+        'data-input-position': 'top',
+        'data-theme': document.documentElement.dataset.theme === 'light' ? 'light' : 'dark_dimmed',
+        'data-lang': 'zh-CN',
+        'data-loading': 'lazy',
+        crossorigin: 'anonymous',
+        async: '',
+      };
+      for (var k in cfg) s.setAttribute(k, cfg[k]);
+      document.getElementById('giscus-container').appendChild(s);
+
+      document.getElementById('theme-toggle')?.addEventListener('click', function () {
+        var iframe = document.querySelector('iframe.giscus-frame');
+        if (!iframe) return;
+        var theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark_dimmed';
+        iframe.contentWindow.postMessage(
+          { giscus: { setConfig: { theme: theme } } },
+          'https://giscus.app'
+        );
+      });
+    })();
+  </script>
+)}

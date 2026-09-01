@@ -1,0 +1,16 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+
+const projects = (await getCollection('projects'))
+  .sort((a, b) => a.data.order - b.data.order || b.data.year - a.data.year);
+---
+
+<BaseLayout title="项目" description="我做过的项目与作品">
+  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> ls ./projects</h1>
+  <p class="page-sub">做过的东西，都在这里</p>
+  <div class="grid">
+    {projects.map((project) => <ProjectCard project={project} />)}
+  </div>
+</BaseLayout>

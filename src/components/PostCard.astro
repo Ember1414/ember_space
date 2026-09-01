@@ -1,0 +1,21 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'posts'>;
+}
+
+const { post } = Astro.props;
+const fmt = (d: Date) => d.toISOString().slice(0, 10);
+---
+
+<article class="post-item">
+  <h3 class="post-item-title">
+    <a href={`/posts/${post.id}/`}>{post.data.title}</a>
+  </h3>
+  <p class="post-item-desc">{post.data.description}</p>
+  <div class="post-item-meta">
+    <time datetime={fmt(post.data.pubDate)}>{fmt(post.data.pubDate)}</time>
+    {post.data.tags.map((t) => <a class="tag" href={`/tags/${t}/`}>#{t}</a>)}
+  </div>
+</article>

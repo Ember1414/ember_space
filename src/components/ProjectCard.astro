@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+}
+
+const { project } = Astro.props;
+const d = project.data;
+---
+
+<article class="card">
+  <h3>
+    <a href={d.url ?? d.repo ?? '#'} target={d.url?.startsWith('http') ? '_blank' : undefined} rel="noopener">
+      {d.icon} {d.name}
+    </a>
+  </h3>
+  <p>{d.description}</p>
+  <div class="post-item-meta card-links">
+    <span>{d.year}</span>
+    {d.tags.map((t) => <span class="tag">#{t}</span>)}
+    {d.repo && <a href={d.repo} target="_blank" rel="noopener">源码 ↗</a>}
+  </div>
+</article>

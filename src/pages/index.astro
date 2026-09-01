@@ -1,0 +1,59 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { SITE } from '../consts';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 5);
+
+const projects = (await getCollection('projects'))
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 4);
+---
+
+<BaseLayout>
+  <section class="hero">
+    <div class="term">
+      <div class="term-bar">
+        <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+        <span class="term-title">ember@blog: ~</span>
+      </div>
+      <div class="term-body">
+        <p class="prompt" style="margin: 0 0 0.6rem;">whoami</p>
+        <h1>&gt; 你好，我是 <span class="name">{SITE.author}</span><span class="cursor" aria-hidden="true"></span></h1>
+        <p class="out">{SITE.tagline}。</p>
+        <p class="muted">// {SITE.description}</p>
+        <p class="prompt" style="margin: 0.8rem 0 0;">ls ./links</p>
+        <div class="hero-links">
+          <a href={SITE.social.github} target="_blank" rel="noopener">GitHub ↗</a>
+          <a href={SITE.social.email}>Email</a>
+          <a href="/rss.xml">RSS</a>
+          <a href="/about/">关于我 →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>最新文章</h2>
+      <a href="/posts/">查看全部 →</a>
+    </div>
+    <div class="post-list">
+      {posts.map((post) => <PostCard post={post} />)}
+    </div>
+  </section>
+
+  <section style="margin-top: 3rem;">
+    <div class="section-head">
+      <h2>我的项目</h2>
+      <a href="/projects/">查看全部 →</a>
+    </div>
+    <div class="grid">
+      {projects.map((project) => <ProjectCard project={project} />)}
+    </div>
+  </section>
+</BaseLayout>

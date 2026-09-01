@@ -1,0 +1,118 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Giscus from '../../components/Giscus.astro';
+import { SITE } from '../../consts';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+
+const fmt = (d: Date) => d.toISOString().slice(0, 10);
+// 中文阅读速度约 400 字/分钟
+const readMinutes = Math.max(1, Math.round((post.body?.replace(/\s/g, '').length ?? 0) / 400));
+
+// 构建两级目录（h2/h3）
+interface TocItem {
+  slug: string;
+  text: string;
+  children: { slug: string; text: string }[];
+}
+const toc: TocItem[] = [];
+for (const h of headings) {
+  if (h.depth === 2) {
+    toc.push({ slug: h.slug, text: h.text, children: [] });
+  } else if (h.depth === 3 && toc.length > 0) {
+    toc[toc.length - 1].children.push({ slug: h.slug, text: h.text });
+  }
+}
+
+// 上一篇 / 下一篇（按时间）
+const all = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => a.data.pubDate.valueOf() - b.data.pubDate.valueOf());
+const idx = all.findIndex((p) => p.id === post.id);
+const newer = idx < all.length - 1 ? all[idx + 1] : null;
+const older = idx > 0 ? all[idx - 1] : null;
+
+const description = post.data.description || SITE.description;
+---
+
+<BaseLayout title={post.data.title} description={description}>
+  <div class="post-layout">
+    <article>
+      <header class="post-header">
+        <p class="prompt" style="margin: 0; font-size: 0.85rem;">cat ./posts/{post.id}.md</p>
+        <h1>{post.data.title}</h1>
+        <div class="post-meta">
+          <time datetime={fmt(post.data.pubDate)}>📅 {fmt(post.data.pubDate)}</time>
+          {post.data.updatedDate && <time datetime={fmt(post.data.updatedDate)}>✏️ 更新于 {fmt(post.data.updatedDate)}</time>}
+          <span>⏱️ 约 {readMinutes} 分钟</span>
+        </div>
+        <div class="post-item-meta" style="margin-top: 0.7rem;">
+          {post.data.tags.map((t) => <a class="tag" href={`/tags/${t}/`}>#{t}</a>)}
+        </div>
+      </header>
+
+      <div class="prose" data-pagefind-body>
+        <Content />
+      </div>
+
+      <nav class="post-nav">
+        {older ? <a href={`/posts/${older.id}/`}>← 较早：{older.data.title}</a> : <span></span>}
+        {newer && <a href={`/posts/${newer.id}/`}>较新：{newer.data.title} →</a>}
+      </nav>
+
+      <Giscus />
+    </article>
+
+    {toc.length > 0 && (
+      <aside class="toc" aria-label="文章目录">
+        <div class="toc-inner">
+          <p class="toc-title">目录</p>
+          <ul>
+            {toc.map((h2) => (
+              <li>
+                <a href={`#${h2.slug}`}>{h2.text}</a>
+                {h2.children.length > 0 && (
+                  <ul>
+                    {h2.children.map((h3) => <li><a href={`#${h3.slug}`}>{h3.text}</a></li>)}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
+    )}
+  </div>
+</BaseLayout>
+
+<script>
+  // 目录高亮当前所在章节
+  const tocLinks = document.querySelectorAll<HTMLAnchorElement>('.toc a');
+  const targets = [...tocLinks]
+    .map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))))
+    .filter((el): el is HTMLElement => el !== null);
+
+  if (targets.length > 0 && 'IntersectionObserver' in window) {
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        const current = targets.find((t) => visible.has(t.id));
+        if (current) {
+          tocLinks.forEach((a) => a.classList.toggle('active', decodeURIComponent(a.hash.slice(1)) === current.id));
+        }
+      },
+      { rootMargin: '-10% 0px -80% 0px' }
+    );
+    targets.forEach((t) => observer.observe(t));
+  }
+</script>

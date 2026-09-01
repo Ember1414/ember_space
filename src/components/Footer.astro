@@ -1,0 +1,60 @@
+---
+import { SITE } from '../consts';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <p class="prompt" style="font-size: 0.88rem; margin: 0 0 0.8rem;">订阅更新 —— 新文章发布时通知你</p>
+      <form class="subscribe" id="subscribe-form">
+        <input type="email" name="email" required placeholder="you@example.com" aria-label="邮箱地址" />
+        <button class="btn" type="submit">订阅</button>
+        <p class="form-msg" id="subscribe-msg" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+    <div class="footer-meta">
+      <span>© {year} {SITE.author} · Built with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> &amp; <a href="https://pages.cloudflare.com" target="_blank" rel="noopener">Cloudflare Pages</a></span>
+      <span>
+        <a href={SITE.social.github} target="_blank" rel="noopener">GitHub</a>
+        ·
+        <a href={SITE.social.email}>Email</a>
+        ·
+        <a href="/rss.xml">RSS</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+  const msg = document.getElementById('subscribe-msg');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!msg) return;
+    const email = (new FormData(form).get('email') as string | null)?.trim() ?? '';
+    msg.className = 'form-msg';
+    msg.textContent = '发送中 …';
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msg.className = 'form-msg ok';
+        msg.textContent = data.message ?? '订阅成功！';
+        form.reset();
+      } else {
+        msg.className = 'form-msg err';
+        msg.textContent = data.error ?? '订阅失败，请稍后再试。';
+      }
+    } catch {
+      msg.className = 'form-msg err';
+      msg.textContent = '网络错误，请稍后再试。';
+    }
+  });
+</script>

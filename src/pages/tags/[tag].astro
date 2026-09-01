@@ -1,0 +1,23 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  const tags = new Set<string>();
+  for (const p of posts) for (const t of p.data.tags) tags.add(t);
+  return [...tags].map((tag) => ({ params: { tag }, props: { posts: posts.filter((p) => p.data.tags.includes(tag)) } }));
+}
+
+const { tag } = Astro.params;
+const { posts } = Astro.props;
+---
+
+<BaseLayout title={`标签：${tag}`} description={`标签「${tag}」下的全部文章`}>
+  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> grep -r #{tag}</h1>
+  <p class="page-sub">{posts.length} 篇 · <a href="/posts/">← 返回全部文章</a></p>
+  <div class="post-list">
+    {posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()).map((post) => <PostCard post={post} />)}
+  </div>
+</BaseLayout>

@@ -1,0 +1,87 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="搜索" description="站内全文搜索">
+  <h1 class="page-title"><span style="color: var(--accent-text);">$</span> grep -rn "" .</h1>
+  <p class="page-sub">输入关键词，全文搜索所有文章</p>
+
+  <div class="search-box">
+    <input
+      type="search"
+      id="search-input"
+      placeholder="输入关键词 …"
+      autocomplete="off"
+      autofocus
+      aria-label="搜索关键词"
+    />
+  </div>
+
+  <div class="search-results">
+    <p class="search-hint" id="search-status">索引加载中 …</p>
+    <div id="search-output"></div>
+  </div>
+</BaseLayout>
+
+{/* is:inline：脚本原样输出，避免 Vite 在构建时转换对 /pagefind/pagefind.js 的动态导入（索引在构建后才生成） */}
+<script is:inline>
+  (function () {
+    var input = document.getElementById('search-input');
+    var status = document.getElementById('search-status');
+    var output = document.getElementById('search-output');
+    var pagefind = null;
+    var debounce;
+
+    function init() {
+      var pfUrl = new URL('/pagefind/pagefind.js', window.location.origin).href;
+      import(pfUrl)
+        .then(function (m) {
+          pagefind = m;
+          return pagefind.options({ excerptLength: 24 });
+        })
+        .then(function () {
+          status.textContent = '就绪。输入即可搜索。';
+        })
+        .catch(function () {
+          status.textContent = '⚠️ 搜索索引不可用（索引在 npm run build 时生成，本地开发模式下不可用）。';
+        });
+    }
+    init();
+
+    input.addEventListener('input', function () {
+      clearTimeout(debounce);
+      debounce = setTimeout(run, 150);
+    });
+
+    function run() {
+      if (!pagefind) return;
+      var q = input.value.trim();
+      output.innerHTML = '';
+
+      if (!q) {
+        status.textContent = '就绪。输入即可搜索。';
+        return;
+      }
+
+      pagefind.search(q).then(function (res) {
+        status.textContent =
+          res.results.length === 0
+            ? '没有找到与「' + q + '」相关的结果。'
+            : '找到 ' + res.results.length + ' 条结果：';
+
+        Promise.all(res.results.slice(0, 20).map(function (r) { return r.data(); })).then(function (items) {
+          for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var div = document.createElement('div');
+            div.className = 'search-result-item';
+            var title = (item.meta && item.meta.title) || item.url;
+            div.innerHTML =
+              '<a href="' + item.url + '">' + title + '</a>' +
+              '<div class="snippet">' + item.excerpt + '</div>';
+            output.appendChild(div);
+          }
+        });
+      });
+    }
+  })();
+</script>

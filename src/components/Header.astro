@@ -1,0 +1,46 @@
+---
+import { SITE } from '../consts';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+
+const links = [
+  { href: '/posts/', label: '文章' },
+  { href: '/projects/', label: '项目' },
+  { href: '/search/', label: '搜索' },
+  { href: '/about/', label: '关于' },
+];
+---
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="logo" aria-label="返回首页">
+      <span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span>
+    </a>
+    <nav class="nav" aria-label="主导航">
+      {links.map((l) => <a href={l.href} aria-current={isActive(l.href) ? 'true' : undefined}>{l.label}</a>)}
+      <button class="theme-btn" id="theme-toggle" type="button" title="切换主题">
+        <span id="theme-icon">☀︎</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById('theme-toggle');
+  const icon = document.getElementById('theme-icon');
+
+  function syncIcon() {
+    const t = document.documentElement.dataset.theme;
+    if (icon) icon.textContent = t === 'light' ? '☾' : '☀︎';
+  }
+  syncIcon();
+
+  btn?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('theme', next);
+    syncIcon();
+  });
+</script>
