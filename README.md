@@ -42,22 +42,26 @@ draft: false # true 则不会发布
 在 `src/content/projects/` 下新建 Markdown 文件，frontmatter 参考 `ember-blog.md`：
 `name`、`icon`（emoji）、`description`、`url`（可选）、`repo`（可选）、`tags`、`year`、`order`（排序）。
 
-## 部署到 Cloudflare Pages
+## 部署（wrangler Direct Upload，已配置好）
 
-1. 把代码推送到 GitHub 仓库
-2. [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → 连接 GitHub 仓库
-3. 构建配置：
-   - **Framework preset**: Astro
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. 保存并部署，获得 `*.pages.dev` 域名
+本项目使用 Direct Upload 模式部署（`wrangler.toml` 已含 KV 绑定），更新站点只需两条命令：
 
-### 启用邮件订阅（KV）
+```sh
+npm run build
+npx wrangler pages deploy dist --project-name=ember-space --branch=main
+```
 
-1. Dashboard → **Storage & Databases** → **KV** → 创建一个 namespace（如 `subscribers`）
-2. 进入 Pages 项目 → **Settings** → **Functions** → **KV namespace bindings**
-   - 变量名填 `SUBSCRIBERS`，选择刚创建的 namespace
-3. 重新部署后，页脚订阅表单即可工作（订阅邮箱存在 KV 中，可在 Dashboard 查看）
+线上地址：https://ember-space.pages.dev
+
+> 注意：不要在 Cloudflare Dashboard 再给这个项目连接 GitHub 仓库——同一 Pages 项目只能有一种部署来源，会冲突。
+
+### 邮件订阅（KV）
+
+`wrangler.toml` 已声明 `SUBSCRIBERS` KV 绑定，部署时自动生效。查看订阅者：
+
+```sh
+npx wrangler kv key list --namespace-id=0f643c099c2e4b6aa129eb7a363d5d64
+```
 
 ### 启用评论（giscus）
 

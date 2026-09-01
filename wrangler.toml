@@ -1,0 +1,9 @@
+# Cloudflare Pages 配置：wrangler pages deploy 时自动应用
+name = "ember-space"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
+
+# 邮件订阅存储（functions/api/subscribe.ts 读取 env.SUBSCRIBERS）
+[[kv_namespaces]]
+binding = "SUBSCRIBERS"
+id = "0f643c099c2e4b6aa129eb7a363d5d64"
