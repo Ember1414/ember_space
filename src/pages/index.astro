@@ -2,16 +2,15 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
-import ProjectCard from '../components/ProjectCard.astro';
+import RepoCard from '../components/RepoCard.astro';
 import { SITE } from '../consts';
+import { getGitHubRepos } from '../lib/github';
 
 const posts = (await getCollection('posts', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 5);
 
-const projects = (await getCollection('projects'))
-  .sort((a, b) => a.data.order - b.data.order)
-  .slice(0, 4);
+const repos = (await getGitHubRepos()).slice(0, 4);
 ---
 
 <BaseLayout>
@@ -53,7 +52,7 @@ const projects = (await getCollection('projects'))
       <a href="/projects/">查看全部 →</a>
     </div>
     <div class="grid">
-      {projects.map((project) => <ProjectCard project={project} />)}
+      {repos.map((repo) => <RepoCard repo={repo} />)}
     </div>
   </section>
 </BaseLayout>

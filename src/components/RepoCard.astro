@@ -1,0 +1,25 @@
+---
+import type { Repo } from '../lib/github';
+
+interface Props {
+  repo: Repo;
+}
+
+const { repo } = Astro.props;
+const pushed = repo.pushed_at ? new Date(repo.pushed_at).toISOString().slice(0, 10) : null;
+---
+
+<article class="card">
+  <h3>
+    <a href={repo.homepage || repo.html_url} target="_blank" rel="noopener">
+      <span style="color: var(--accent-text);">▸</span> {repo.name}
+    </a>
+  </h3>
+  {repo.description && <p>{repo.description}</p>}
+  <div class="post-item-meta card-links">
+    {repo.language && <span class="tag">{repo.language}</span>}
+    {repo.stargazers_count > 0 && <span>⭐ {repo.stargazers_count}</span>}
+    {pushed && <span>{pushed}</span>}
+    <a href={repo.html_url} target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</article>

@@ -37,10 +37,24 @@ draft: false # true 则不会发布
 正文从这里开始，标准 Markdown 语法。
 ```
 
-## 添加项目展示
+## 项目展示
 
-在 `src/content/projects/` 下新建 Markdown 文件，frontmatter 参考 `ember-blog.md`：
+`/projects/` 页面和首页的项目卡片**自动展示 GitHub 公开仓库**（不含 fork），构建时从 GitHub API 拉取。
+
+你的本地网络可能无法访问 GitHub API，因此有缓存回退机制：
+
+- 在线拉取成功 → 自动更新缓存文件 `src/data/github-repos.json`
+- 拉取失败 → 直接使用缓存
+
+刷新仓库列表的方式：在能访问 GitHub API 的网络下重新构建，或直接编辑 `src/data/github-repos.json`（字段与 GitHub API 一致，也可以手动改名字/描述）。
+
+> 提示：在 GitHub 仓库页的 About 里填写 description，会自动显示在项目卡片上。
+
+### 精选项目（可选）
+
+如果想手动置顶展示某些项目（如无 GitHub 仓库的作品），在 `src/content/projects/` 下新建 Markdown 文件，frontmatter 格式：
 `name`、`icon`（emoji）、`description`、`url`（可选）、`repo`（可选）、`tags`、`year`、`order`（排序）。
+添加后会以「精选项目」区块显示在 GitHub 仓库列表上方。
 
 ## 部署（wrangler Direct Upload，已配置好）
 
