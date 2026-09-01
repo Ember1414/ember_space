@@ -1,8 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import { t, tf, type Lang } from '../../i18n/ui';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PostCard from '../../../components/PostCard.astro';
+import { t, tf, type Lang } from '../../../i18n/ui';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts', ({ data }) => !data.draft);
@@ -11,14 +11,14 @@ export async function getStaticPaths() {
   return [...tags].map((tag) => ({ params: { tag }, props: { posts: posts.filter((p) => p.data.tags.includes(tag)) } }));
 }
 
-const lang: Lang = 'zh';
+const lang: Lang = 'en';
 const { tag } = Astro.params;
 const { posts } = Astro.props;
 ---
 
-<BaseLayout lang={lang} title={`#${tag}`} description={`标签「${tag}」下的全部文章`}>
+<BaseLayout lang={lang} title={`#${tag}`}>
   <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> grep -r #{tag}</h1>
-  <p class="page-sub anim" style="animation-delay: 0.08s;">{tf(lang, 'tag.count', posts.length)} · <a href="/posts/">{t(lang, 'tag.back')}</a></p>
+  <p class="page-sub anim" style="animation-delay: 0.08s;">{tf(lang, 'tag.count', posts.length)} · <a href="/en/posts/">{t(lang, 'tag.back')}</a></p>
   <div class="post-list">
     {posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()).map((post, i) => <PostCard post={post} lang={lang} delay={Math.min(0.12 + i * 0.06, 0.5)} />)}
   </div>

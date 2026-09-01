@@ -1,8 +1,8 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { t, type Lang } from '../i18n/ui';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { t, type Lang } from '../../i18n/ui';
 
-const lang: Lang = 'zh';
+const lang: Lang = 'en';
 const msgs = {
   loading: t(lang, 'search.loading'),
   ready: t(lang, 'search.ready'),
@@ -11,7 +11,7 @@ const msgs = {
 };
 ---
 
-<BaseLayout lang={lang} title={t(lang, 'nav.search')} description="站内全文搜索">
+<BaseLayout lang={lang} title={t(lang, 'nav.search')}>
   <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> grep -rn "" .</h1>
   <p class="page-sub anim" style="animation-delay: 0.08s;">{t(lang, 'search.subtitle')}</p>
 

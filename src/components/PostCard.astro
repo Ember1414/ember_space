@@ -1,22 +1,25 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import type { Lang } from '../i18n/ui';
 
 interface Props {
   post: CollectionEntry<'posts'>;
   delay?: number;
+  lang?: Lang;
 }
 
-const { post, delay = 0 } = Astro.props;
+const { post, delay = 0, lang = 'zh' } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 ---
 
 <article class="post-item anim" style={delay > 0 ? `animation-delay: ${delay}s;` : undefined}>
   <h3 class="post-item-title">
-    <a href={`/posts/${post.id}/`}>{post.data.title}</a>
+    <a href={`${base}/posts/${post.id}/`}>{post.data.title}</a>
   </h3>
   <p class="post-item-desc">{post.data.description}</p>
   <div class="post-item-meta">
     <time datetime={fmt(post.data.pubDate)}>{fmt(post.data.pubDate)}</time>
-    {post.data.tags.map((t) => <a class="tag" href={`/tags/${t}/`}>#{t}</a>)}
+    {post.data.tags.map((t) => <a class="tag" href={`${base}/tags/${t}/`}>#{t}</a>)}
   </div>
 </article>

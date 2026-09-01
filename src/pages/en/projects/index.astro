@@ -1,0 +1,40 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ProjectCard from '../../../components/ProjectCard.astro';
+import RepoCard from '../../../components/RepoCard.astro';
+import { t, type Lang } from '../../../i18n/ui';
+import { SITE } from '../../../consts';
+import { getGitHubRepos } from '../../../lib/github';
+
+const lang: Lang = 'en';
+const featured = (await getCollection('projects'))
+  .sort((a, b) => a.data.order - b.data.order || b.data.year - a.data.year);
+const repos = await getGitHubRepos();
+---
+
+<BaseLayout lang={lang} title={t(lang, 'nav.projects')}>
+  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> ls ./projects</h1>
+  <p class="page-sub anim" style="animation-delay: 0.08s;">{t(lang, 'projects.subtitle')}</p>
+
+  {featured.length > 0 && (
+    <section class="anim" style="animation-delay: 0.15s;">
+      <div class="section-head">
+        <h2>{t(lang, 'projects.featured')}</h2>
+      </div>
+      <div class="grid">
+        {featured.map((project) => <ProjectCard project={project} />)}
+      </div>
+    </section>
+  )}
+
+  <section class="anim" style={`animation-delay: ${featured.length > 0 ? '0.28' : '0.15'}s; ${featured.length > 0 ? 'margin-top: 3rem;' : ''}`}>
+    <div class="section-head">
+      <h2>{t(lang, 'projects.repos')}</h2>
+      <a href={SITE.social.github} target="_blank" rel="noopener">{t(lang, 'projects.allOnGithub')} ↗</a>
+    </div>
+    <div class="grid">
+      {repos.map((repo) => <RepoCard repo={repo} />)}
+    </div>
+  </section>
+</BaseLayout>

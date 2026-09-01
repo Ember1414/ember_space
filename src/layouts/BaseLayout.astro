@@ -2,36 +2,61 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { SITE } from '../consts';
+import { SITE_I18N, type Lang } from '../i18n/ui';
 import '../styles/global.css';
 
 interface Props {
+  lang?: Lang;
   title?: string;
   description?: string;
 }
 
-const { title, description = SITE.description } = Astro.props;
-const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SITE.tagline}`;
+const { lang = 'zh', title, description } = Astro.props;
+const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SITE_I18N[lang].tagline}`;
+const desc = description ?? SITE_I18N[lang].description;
+
+// 语言互链：/xxx ↔ /en/xxx
+const path = Astro.url.pathname;
+const otherLang: Lang = lang === 'zh' ? 'en' : 'zh';
+const otherPath = lang === 'zh' ? `/en${path}` : path.replace('/en', '') || '/';
+const otherAbs = new URL(otherPath, Astro.site ?? SITE.url).href;
+const selfAbs = new URL(path, Astro.site ?? SITE.url).href;
 ---
 
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang={lang === 'zh' ? 'zh-CN' : 'en'} data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{pageTitle}</title>
-    <meta name="description" content={description} />
+    <meta name="description" content={desc} />
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />
+    <link rel="alternate" hreflang={lang} href={selfAbs} />
+    <link rel="alternate" hreflang={otherLang} href={otherAbs} />
     <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={description} />
+    <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={selfAbs} />
+    <meta property="og:locale" content={lang === 'zh' ? 'zh_CN' : 'en_US'} />
+    <meta property="og:locale:alternate" content={lang === 'zh' ? 'en_US' : 'zh_CN'} />
     <script is:inline>
       // 防 FOUC：默认暗色（站点主打风格），用户手动切换后记住选择
       (function () {
         var t = localStorage.getItem('theme') || 'dark';
         document.documentElement.dataset.theme = t;
+      })();
+      // 浏览器语言跳转：仅首次访问根路径时按浏览器语言跳转（session 内只提示一次）
+      (function () {
+        try {
+          if (location.pathname === '/' && !sessionStorage.getItem('langChecked')) {
+            sessionStorage.setItem('langChecked', '1');
+            var nav = (navigator.language || 'zh').toLowerCase();
+            if (nav.indexOf('zh') !== 0) location.replace('/en/');
+          }
+        } catch {}
       })();
       // 打字机前置：仅首页、且用户未偏好减弱动效时，先隐藏打字行；2.5s 兜底强制显示
       (function () {
@@ -59,11 +84,11 @@ const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SIT
     </script>
   </head>
   <body>
-    <Header />
+    <Header lang={lang} />
     <main class="container">
       <slot />
     </main>
-    <Footer />
+    <Footer lang={lang} />
   </body>
 </html>
 
@@ -88,7 +113,7 @@ const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SIT
           }
         }
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.05 }
     );
     els.forEach((el) => io.observe(el));
     window.__revealOk = true;

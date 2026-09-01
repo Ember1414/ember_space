@@ -1,24 +1,28 @@
 ---
 import { getCollection, render } from 'astro:content';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE } from '../consts';
-import { t, type Lang } from '../i18n/ui';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../consts';
+import { t, type Lang } from '../../i18n/ui';
 
-const lang: Lang = 'zh';
-const aboutEntry = (await getCollection('about', ({ data }) => data.lang === lang))[0]
-  ?? (await getCollection('about'))[0];
+const lang: Lang = 'en';
+const allAbout = await getCollection('about');
+const aboutEntry = allAbout.find((a) => a.data.lang === lang)
+  ?? allAbout.find((a) => a.data.lang === 'zh')
+  ?? allAbout[0];
 const { Content } = await render(aboutEntry);
+const translated = aboutEntry.data.lang === 'en';
 ---
 
-<BaseLayout lang={lang} title={t(lang, 'nav.about')} description={`关于 ${SITE.author}`}>
+<BaseLayout lang={lang} title={t(lang, 'nav.about')} description={`About ${SITE.author}`}>
   <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> cat about.txt</h1>
 
   <div class="term anim" style="animation-delay: 0.1s; margin-top: 1.5rem;">
     <div class="term-bar">
       <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
-      <span class="term-title">about.txt — {lang === 'zh' ? '简介' : 'Profile'}</span>
+      <span class="term-title">about.txt — Profile</span>
     </div>
-    <div class="term-body prose anim" style="animation-delay: 0.16s;" data-pagefind-body data-pagefind-meta="type:关于">
+    <div class="term-body prose anim" style="animation-delay: 0.16s;">
+      {!translated && <p class="comments-hint" style="margin: 0 0 1rem;">{t(lang, 'post.noEnglish')}</p>}
       <Content />
     </div>
   </div>
@@ -31,8 +35,8 @@ const { Content } = await render(aboutEntry);
     <li><span class="k">GitHub</span> <a href={SITE.social.github} target="_blank" rel="noopener">{SITE.social.github.replace('https://', '')}</a></li>
   </ul>
 
-  <h2 style="font-size: 1.2rem; margin: 2.5rem 0 1rem;" class="anim" data-pagefind-ignore><span style="color: var(--accent-text);">##</span> {t(lang, 'about.site')}</h2>
-  <div class="prose anim" style="animation-delay: 0.26s;" data-pagefind-ignore>
+  <h2 style="font-size: 1.2rem; margin: 2.5rem 0 1rem;" class="anim"><span style="color: var(--accent-text);">##</span> {t(lang, 'about.site')}</h2>
+  <div class="prose anim" style="animation-delay: 0.26s;">
     <ul>
       <li>{t(lang, 'about.builtWith')} — <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> / <a href="https://pages.cloudflare.com" target="_blank" rel="noopener">Cloudflare Pages</a></li>
       <li>{t(lang, 'about.theme')}</li>

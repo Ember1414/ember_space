@@ -10,6 +10,7 @@ const posts = defineCollection({
     updatedDate: z.coerce.date().optional(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
+    lang: z.enum(['zh', 'en']).default('zh'),
   }),
 });
 
@@ -28,8 +29,10 @@ const projects = defineCollection({
 });
 
 const about = defineCollection({
-  loader: glob({ pattern: 'about.md', base: './src/content' }),
-  schema: z.object({}),
+  loader: glob({ pattern: 'about*.md', base: './src/content' }),
+  schema: z.object({
+    lang: z.enum(['zh', 'en']).default('zh'),
+  }),
 });
 
 export const collections = { posts, projects, about };

@@ -28,6 +28,16 @@ npm run preview  # 本地预览构建产物（搜索可用，订阅 API 仅线�
 
 页面下方的结构化信息（邮箱、GitHub、坐标等）在 `src/consts.ts` 的 `SITE` 中修改。
 
+## 双语（中/EN）
+
+站点是完整双语结构：中文为默认语言（无前缀），英文挂在 `/en/` 前缀下（如 `/en/posts/…`）。
+
+- 界面文案字典：`src/i18n/ui.ts`（新增文案时在此补 `zh` / `en` 两个 key）
+- 导航栏有「中 / EN」按钮互切；新访客首次访问按浏览器语言自动跳转
+- 文章 frontmatter 支持 `lang: zh`（默认）/ `lang: en`；**写英文文章**：在 `src/content/posts/` 新建文件并写 `lang: en`，英文列表自动收录，中文列表只显示中文文章
+- 暂无英文版的文章，英文路由下显示中文原文并带提示条
+- 关于页英文版：`src/content/about-en.md`
+
 ## 写文章
 
 在 `src/content/posts/` 下新建 Markdown 文件：

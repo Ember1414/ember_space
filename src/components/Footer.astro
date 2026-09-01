@@ -1,21 +1,38 @@
 ---
 import { SITE } from '../consts';
+import { t, tf, type Lang } from '../i18n/ui';
 
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'zh' } = Astro.props;
 const year = new Date().getFullYear();
+
+// 订阅表单消息传给内联脚本
+const msgs = {
+  sending: t(lang, 'footer.sending'),
+  ok: t(lang, 'footer.ok'),
+  duplicate: t(lang, 'footer.duplicate'),
+  invalid: t(lang, 'footer.invalid'),
+  serverError: t(lang, 'footer.serverError'),
+  networkError: t(lang, 'footer.networkError'),
+  fallbackError: t(lang, 'footer.fallbackError'),
+};
 ---
 
 <footer class="site-footer">
   <div class="footer-inner">
     <div>
-      <p class="prompt" style="font-size: 0.88rem; margin: 0 0 0.8rem;">订阅更新 —— 新文章发布时通知你</p>
+      <p class="prompt" style="font-size: 0.88rem; margin: 0 0 0.8rem;">{t(lang, 'footer.subscribe')}</p>
       <form class="subscribe" id="subscribe-form">
-        <input type="email" name="email" required placeholder="you@example.com" aria-label="邮箱地址" />
-        <button class="btn" type="submit">订阅</button>
+        <input type="email" name="email" required placeholder={t(lang, 'footer.placeholder')} aria-label="Email" />
+        <button class="btn" type="submit">{t(lang, 'footer.subscribeBtn')}</button>
         <p class="form-msg" id="subscribe-msg" role="status" aria-live="polite"></p>
       </form>
     </div>
     <div class="footer-meta">
-      <span>© {year} {SITE.author} · Built with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> &amp; <a href="https://pages.cloudflare.com" target="_blank" rel="noopener">Cloudflare Pages</a></span>
+      <span>{t(lang, 'footer.copyright')(SITE.author, year)} <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> &amp; <a href="https://pages.cloudflare.com" target="_blank" rel="noopener">Cloudflare Pages</a></span>
       <span>
         <a href={SITE.social.github} target="_blank" rel="noopener">GitHub</a>
         ·
@@ -27,16 +44,16 @@ const year = new Date().getFullYear();
   </div>
 </footer>
 
-<script>
-  const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+<script define:vars={{ msgs, lang }}>
+  const form = document.getElementById('subscribe-form');
   const msg = document.getElementById('subscribe-msg');
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!msg) return;
-    const email = (new FormData(form).get('email') as string | null)?.trim() ?? '';
+    const email = (new FormData(form).get('email') || '').trim();
     msg.className = 'form-msg';
-    msg.textContent = '发送中 …';
+    msg.textContent = msgs.sending;
     try {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
@@ -44,17 +61,14 @@ const year = new Date().getFullYear();
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (res.ok) {
-        msg.className = 'form-msg ok';
-        msg.textContent = data.message ?? '订阅成功！';
-        form.reset();
-      } else {
-        msg.className = 'form-msg err';
-        msg.textContent = data.error ?? '订阅失败，请稍后再试。';
-      }
+      msg.className = 'form-msg ' + (res.ok ? 'ok' : 'err');
+      if (res.status === 400) msg.textContent = msgs.invalid;
+      else if (res.ok && data.duplicate) msg.textContent = msgs.duplicate;
+      else if (res.ok) { msg.textContent = msgs.ok; form.reset(); }
+      else msg.textContent = data.error || msgs.fallbackError;
     } catch {
       msg.className = 'form-msg err';
-      msg.textContent = '网络错误，请稍后再试。';
+      msg.textContent = msgs.networkError;
     }
   });
 </script>

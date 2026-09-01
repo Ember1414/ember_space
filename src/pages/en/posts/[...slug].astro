@@ -1,0 +1,17 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PostPage from '../../../templates/PostPage.astro';
+
+export async function getStaticPaths() {
+  // 英文版覆盖所有文章；暂无英文翻译的内容会显示中文原文（页面顶部有提示条）
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+---
+
+<BaseLayout lang="en" title={post.data.title} description={post.data.description}>
+  <PostPage lang="en" post={post} />
+</BaseLayout>

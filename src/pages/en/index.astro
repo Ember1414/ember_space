@@ -1,15 +1,16 @@
 ---
 import { getCollection } from 'astro:content';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
-import RepoCard from '../components/RepoCard.astro';
-import TypeHero from '../components/TypeHero.astro';
-import { t, type Lang } from '../i18n/ui';
-import { getGitHubRepos } from '../lib/github';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import RepoCard from '../../components/RepoCard.astro';
+import TypeHero from '../../components/TypeHero.astro';
+import { t, type Lang } from '../../i18n/ui';
+import { getGitHubRepos } from '../../lib/github';
 
-const lang: Lang = 'zh';
+const lang: Lang = 'en';
 
-const posts = (await getCollection('posts', ({ data }) => !data.draft && data.lang === lang))
+// 展示全部文章；暂无英文翻译的会以中文原文呈现
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 5);
 
@@ -24,7 +25,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
   <section class="anim" style="animation-delay: 0.15s;">
     <div class="section-head">
       <h2>{t(lang, 'home.latest')}</h2>
-      <a href="/posts/">{t(lang, 'home.viewAll')} →</a>
+      <a href="/en/posts/">{t(lang, 'home.viewAll')} →</a>
     </div>
     <div class="post-list">
       {posts.map((post) => <PostCard post={post} lang={lang} />)}
@@ -34,7 +35,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
   <section class="anim" style="animation-delay: 0.28s; margin-top: 3rem;">
     <div class="section-head">
       <h2>{t(lang, 'home.projects')}</h2>
-      <a href="/projects/">{t(lang, 'home.viewAll')} →</a>
+      <a href="/en/projects/">{t(lang, 'home.viewAll')} →</a>
     </div>
     <div class="grid">
       {repos.map((repo) => <RepoCard repo={repo} />)}

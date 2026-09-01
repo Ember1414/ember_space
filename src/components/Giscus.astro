@@ -1,24 +1,29 @@
 ---
 import { GISCUS } from '../consts';
+import { t, type Lang } from '../i18n/ui';
 
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'zh' } = Astro.props;
 const configured = Boolean(GISCUS.repo && GISCUS.repoId && GISCUS.categoryId);
 ---
 
 <div class="comments">
-  <p class="prompt" style="font-size: 0.88rem; margin: 0 0 1rem;">评论</p>
+  <p class="prompt" style="font-size: 0.88rem; margin: 0 0 1rem;">{t(lang, 'post.comments')}</p>
   {configured ? (
     <div id="giscus-container"></div>
   ) : (
     <div class="comments-hint">
-      评论系统（giscus）尚未配置。在 <code>src/consts.ts</code> 中填入
-      <code>GISCUS.repo / repoId / categoryId</code> 即可启用 ——
-      配置方法见 <a href="https://giscus.app" target="_blank" rel="noopener">giscus.app</a>。
+      {t(lang, 'giscus.notConfigured')}
+      <code>src/consts.ts</code> — <a href="https://giscus.app" target="_blank" rel="noopener">giscus.app</a>{t(lang, 'giscus.notConfiguredTail')}
     </div>
   )}
 </div>
 
 {configured && (
-  <script is:inline define:vars={{ GISCUS }}>
+  <script is:inline define:vars={{ GISCUS, lang }}>
     (function () {
       var s = document.createElement('script');
       var cfg = {
@@ -33,7 +38,7 @@ const configured = Boolean(GISCUS.repo && GISCUS.repoId && GISCUS.categoryId);
         'data-emit-metadata': '0',
         'data-input-position': 'top',
         'data-theme': document.documentElement.dataset.theme === 'light' ? 'light' : 'dark_dimmed',
-        'data-lang': 'zh-CN',
+        'data-lang': lang === 'zh' ? 'zh-CN' : 'en',
         'data-loading': 'lazy',
         crossorigin: 'anonymous',
         async: '',

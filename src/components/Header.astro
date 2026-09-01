@@ -1,26 +1,38 @@
 ---
 import { SITE } from '../consts';
+import { t, type Lang } from '../i18n/ui';
 
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'zh' } = Astro.props;
 const path = Astro.url.pathname;
 const isActive = (href: string) =>
-  href === '/' ? path === '/' : path.startsWith(href);
+  href === '/' ? path === '/' || path === '/en/' : path.startsWith(href);
 
 const links = [
-  { href: '/posts/', label: '文章' },
-  { href: '/projects/', label: '项目' },
-  { href: '/search/', label: '搜索' },
-  { href: '/about/', label: '关于' },
+  { href: '/posts/', label: t(lang, 'nav.posts') },
+  { href: '/projects/', label: t(lang, 'nav.projects') },
+  { href: '/search/', label: t(lang, 'nav.search') },
+  { href: '/about/', label: t(lang, 'nav.about') },
 ];
+
+// 语言切换：/xxx ↔ /en/xxx
+const langSwitchHref =
+  lang === 'zh' ? `/en${path === '/' ? '/' : path}` : path.replace('/en', '') || '/';
+const langSwitchLabel = lang === 'zh' ? 'EN' : '中';
 ---
 
 <header class="site-header">
   <div class="header-inner">
-    <a href="/" class="logo" aria-label="返回首页">
+    <a href={lang === 'zh' ? '/' : '/en/'} class="logo" aria-label="Home">
       <span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span>
     </a>
-    <nav class="nav" aria-label="主导航">
-      {links.map((l) => <a href={l.href} aria-current={isActive(l.href) ? 'true' : undefined}>{l.label}</a>)}
-      <button class="theme-btn" id="theme-toggle" type="button" title="切换主题">
+    <nav class="nav" aria-label="Main navigation">
+      {links.map((l) => <a href={(lang === 'en' ? '/en' : '') + l.href} aria-current={isActive(l.href) ? 'true' : undefined}>{l.label}</a>)}
+      <a class="lang-btn" href={langSwitchHref} aria-label="Switch language">{langSwitchLabel}</a>
+      <button class="theme-btn" id="theme-toggle" type="button" title={t(lang, 'theme.toggle')}>
         <span id="theme-icon">☀︎</span>
       </button>
     </nav>

@@ -44,7 +44,7 @@ export const onRequestPost = async (ctx: { request: Request; env: Env }) => {
 
   const existing = await env.SUBSCRIBERS.get(email);
   if (existing) {
-    return json({ message: '这个邮箱已经订阅过啦。' });
+    return json({ message: '这个邮箱已经订阅过啦。', duplicate: true });
   }
 
   await env.SUBSCRIBERS.put(email, new Date().toISOString());
