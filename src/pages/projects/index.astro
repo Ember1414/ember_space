@@ -12,8 +12,10 @@ const repos = await getGitHubRepos();
 ---
 
 <BaseLayout title="项目" description="我做过的项目与开源仓库">
-  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> ls ./projects</h1>
-  <p class="page-sub anim" style="animation-delay: 0.08s;">做过的东西，都在这里</p>
+  <div data-pagefind-body data-pagefind-meta="type:项目">
+    <span hidden data-pagefind-meta="title:项目与开源仓库"></span>
+    <h1 class="page-title anim" data-pagefind-ignore><span style="color: var(--accent-text);">$</span> ls ./projects</h1>
+    <p class="page-sub anim" style="animation-delay: 0.08s;" data-pagefind-ignore>做过的东西，都在这里</p>
 
   {featured.length > 0 && (
     <section class="anim" style="animation-delay: 0.15s;">
@@ -35,4 +37,5 @@ const repos = await getGitHubRepos();
       {repos.map((repo) => <RepoCard repo={repo} />)}
     </div>
   </section>
+  </div>
 </BaseLayout>

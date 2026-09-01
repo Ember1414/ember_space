@@ -75,7 +75,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             var div = document.createElement('div');
             div.className = 'search-result-item';
             var title = (item.meta && item.meta.title) || item.url;
+            var type = (item.meta && item.meta.type) || '文章';
             div.innerHTML =
+              '<div class="post-item-meta" style="margin-bottom: 0.25rem;"><span class="tag">' + type + '</span></div>' +
               '<a href="' + item.url + '">' + title + '</a>' +
               '<div class="snippet">' + item.excerpt + '</div>';
             output.appendChild(div);
