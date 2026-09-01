@@ -84,21 +84,26 @@ body::before {
 }
 body::after {
   z-index: -1;
-  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
-  background-size: 26px 26px;
+  /* 加号×2（深浅错落）+ 圆点的 48px 图案单元 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1'%3E%3Cpath d='M12 7v10M7 12h10' stroke-opacity='.13'/%3E%3Cpath d='M36 31v10M31 36h10' stroke-opacity='.06'/%3E%3C/g%3E%3Ccircle cx='36' cy='12' r='1' fill='%23ffffff' fill-opacity='.09'/%3E%3C/svg%3E");
   -webkit-mask-image: linear-gradient(135deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 82%);
   mask-image: linear-gradient(135deg, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 82%);
+}
+html[data-theme='light'] body::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg fill='none' stroke='%231f2328' stroke-width='1'%3E%3Cpath d='M12 7v10M7 12h10' stroke-opacity='.14'/%3E%3Cpath d='M36 31v10M31 36h10' stroke-opacity='.07'/%3E%3C/g%3E%3Ccircle cx='36' cy='12' r='1' fill='%231f2328' fill-opacity='.1'/%3E%3C/svg%3E");
 }
 
 /* ============ 进入动画（滚动显现） ============ */
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(24px);
+    filter: blur(5px);
   }
   to {
     opacity: 1;
     transform: none;
+    filter: none;
   }
 }
 /* 仅在 JS 可用且未偏好减弱动效时才初始隐藏（head 内联脚本加 js-anim 类），
@@ -107,7 +112,7 @@ body::after {
   opacity: 0;
 }
 .js-anim .anim.is-visible {
-  animation: fade-up 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: fade-up 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
 /* 打字机：脚本接管前隐藏整行，防止闪现完整文字 */
@@ -591,17 +596,17 @@ a.tag:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
-@media (min-width: 1080px) {
+@media (min-width: 960px) {
   .post-layout {
-    grid-template-columns: minmax(0, 1fr) 220px;
-    gap: 2.5rem;
+    grid-template-columns: minmax(0, 1fr) 185px;
+    gap: 1.75rem;
   }
 }
 
 .toc {
   display: none;
 }
-@media (min-width: 1080px) {
+@media (min-width: 960px) {
   .toc {
     display: block;
   }
@@ -612,7 +617,7 @@ a.tag:hover {
     overflow-y: auto;
     font-size: 0.8rem;
     border-left: 1px solid var(--border);
-    padding-left: 1rem;
+    padding-left: 0;
   }
 }
 .toc-title {
@@ -621,6 +626,7 @@ a.tag:hover {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin: 0 0 0.6rem;
+  padding-left: 1rem;
 }
 .toc ul {
   list-style: none;
@@ -628,14 +634,18 @@ a.tag:hover {
   padding: 0;
 }
 .toc ul ul {
-  padding-left: 1rem;
+  padding-left: 0.9rem;
 }
 .toc li {
-  margin: 0.3rem 0;
+  margin: 0.15rem 0;
 }
 .toc a {
   color: var(--text-muted);
   display: block;
+  padding: 0.12rem 0 0.12rem 0.9rem;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
 }
 .toc a:hover {
   color: var(--accent-text);
@@ -643,6 +653,7 @@ a.tag:hover {
 }
 .toc a.active {
   color: var(--accent-text);
+  border-left-color: var(--accent);
 }
 
 .post-nav {

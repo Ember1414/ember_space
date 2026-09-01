@@ -92,27 +92,44 @@ const description = post.data.description || SITE.description;
 </BaseLayout>
 
 <script>
-  // 目录高亮当前所在章节
-  const tocLinks = document.querySelectorAll<HTMLAnchorElement>('.toc a');
-  const targets = [...tocLinks]
-    .map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))))
-    .filter((el): el is HTMLElement => el !== null);
+  // 目录跟随滚动：高亮当前所在章节，并让目录自动滚动到当前项
+  (function () {
+    const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('.toc a')];
+    const headings = tocLinks
+      .map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))))
+      .filter((el): el is HTMLElement => el !== null);
 
-  if (targets.length > 0 && 'IntersectionObserver' in window) {
-    const visible = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) visible.add(e.target.id);
-          else visible.delete(e.target.id);
-        }
-        const current = targets.find((t) => visible.has(t.id));
-        if (current) {
-          tocLinks.forEach((a) => a.classList.toggle('active', decodeURIComponent(a.hash.slice(1)) === current.id));
+    if (headings.length === 0) return;
+
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      // 取最后一个已滚过视口顶部偏移线的标题为当前章节
+      const fromTop = window.scrollY + 130;
+      let current = headings[0];
+      for (const h of headings) {
+        if (h.offsetTop <= fromTop) current = h;
+      }
+      let activeLink: HTMLAnchorElement | undefined;
+      tocLinks.forEach((a) => {
+        const on = decodeURIComponent(a.hash.slice(1)) === current.id;
+        a.classList.toggle('active', on);
+        if (on) activeLink = a;
+      });
+      // 目录过长时，让当前项保持可见
+      activeLink?.scrollIntoView({ block: 'nearest' });
+    };
+
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(update);
         }
       },
-      { rootMargin: '-10% 0px -80% 0px' }
+      { passive: true }
     );
-    targets.forEach((t) => observer.observe(t));
-  }
+    update();
+  })();
 </script>
