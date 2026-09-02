@@ -331,6 +331,25 @@ main.container {
   font-size: 0.82rem;
   color: var(--text-muted);
 }
+
+.footer-clock {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.footer-clock time {
+  color: var(--accent-text);
+}
+.clock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 2s ease-in-out infinite;
+}
 .footer-meta a {
   color: var(--text-muted);
 }
