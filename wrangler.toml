@@ -7,3 +7,8 @@ compatibility_date = "2026-09-01"
 [[kv_namespaces]]
 binding = "SUBSCRIBERS"
 id = "0f643c099c2e4b6aa129eb7a363d5d64"
+
+# 浏览量存储（functions/api/views.ts 读取 env.VIEWS）
+[[kv_namespaces]]
+binding = "VIEWS"
+id = "1305f74d5f02458b9d2b21e37ff68a7c"

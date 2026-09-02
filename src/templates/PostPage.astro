@@ -52,6 +52,7 @@ const older = idx > 0 ? siblings[idx - 1] : null;
         <time datetime={fmt(post.data.pubDate)}>📅 {fmt(post.data.pubDate)}</time>
         {post.data.updatedDate && <time datetime={fmt(post.data.updatedDate)}>{tf(lang, 'post.updated', fmt(post.data.updatedDate))}</time>}
         <span>{tf(lang, 'post.min', readMinutes)}</span>
+        <span class="views" data-views data-path={`${base}/posts/${post.id}/`}>👀 <span class="views-num">···</span></span>
       </div>
       <div class="post-item-meta" style="margin-top: 0.7rem;">
         {post.data.tags.map((tg) => <a class="tag" href={`${base}/tags/${tg}/`}>#{tg}</a>)}
@@ -90,6 +91,26 @@ const older = idx > 0 ? siblings[idx - 1] : null;
     </aside>
   )}
 </div>
+
+<script>
+  // 浏览量：页面打开即 +1（中英文路由共享计数），API 不可用时隐藏
+  (function () {
+    var el = document.querySelector('[data-views]');
+    if (!el) return;
+    var num = el.querySelector('.views-num');
+    fetch('/api/views', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: el.getAttribute('data-path') }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (typeof d.views === 'number' && num) num.textContent = String(d.views);
+        else el.style.display = 'none';
+      })
+      .catch(function () { el.style.display = 'none'; });
+  })();
+</script>
 
 <script>
   // 目录跟随滚动：高亮当前所在章节，并让目录自动滚动到当前项
