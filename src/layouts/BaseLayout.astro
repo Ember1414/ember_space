@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Sidebar from '../components/Sidebar.astro';
 import { SITE } from '../consts';
 import { SITE_I18N, type Lang } from '../i18n/ui';
 import '../styles/global.css';
@@ -85,6 +86,7 @@ const selfAbs = new URL(path, Astro.site ?? SITE.url).href;
   </head>
   <body>
     <Header lang={lang} />
+    <Sidebar lang={lang} />
     <main class="container">
       <slot />
     </main>
@@ -93,6 +95,38 @@ const selfAbs = new URL(path, Astro.site ?? SITE.url).href;
 </html>
 
 <script>
+  // 主题切换：多实例（桌面侧边栏 / 移动顶栏），同步所有图标
+  function syncThemeIcons() {
+    const t = document.documentElement.dataset.theme;
+    document.querySelectorAll('.js-theme-icon').forEach((i) => {
+      i.textContent = t === 'light' ? '☾' : '☀︎';
+    });
+  }
+  syncThemeIcons();
+  document.querySelectorAll('.js-theme-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('theme', next);
+      syncThemeIcons();
+    });
+  });
+
+  // 顶部/侧边栏实时北京时间（UTC+8）：手动偏移计算，不依赖访客本地时区
+  function beijingNow() {
+    const d = new Date();
+    const bj = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 8 * 3600000);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(bj.getHours())}:${p(bj.getMinutes())}:${p(bj.getSeconds())}`;
+  }
+  function tickClock() {
+    document.querySelectorAll('[data-clock]').forEach((el) => {
+      el.textContent = beijingNow();
+    });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
   // 滚动显现：.anim 元素进入视口时触发 fade-up；元素自带的 animation-delay 依次错开
   (function () {
     const els = Array.from(document.querySelectorAll<HTMLElement>('.anim'));

@@ -1,0 +1,32 @@
+---
+/** 内联 SVG 线性图标（stroke 风格，随文字颜色） */
+interface Props {
+  name: 'posts' | 'projects' | 'search' | 'about' | 'menu' | 'close';
+  size?: number;
+}
+
+const { name, size = 18 } = Astro.props;
+
+const paths: Record<Props['name'], string> = {
+  posts: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z M14 2v6h6 M9 13h6 M9 17h4',
+  projects: 'M4 4h16v16H4z M8 9l3 3-3 3 M13 15h4',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-4.35-4.35',
+  about: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21c0-4 3.6-6 8-6s8 2 8 6',
+  menu: 'M3 6h18 M3 12h18 M3 18h18',
+  close: 'M6 6l12 12 M18 6L6 18',
+};
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.8"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+  <path d={paths[name]} />
+</svg>

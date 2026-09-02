@@ -1,0 +1,92 @@
+---
+import Icon from './Icon.astro';
+import { t, type Lang } from '../i18n/ui';
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'zh' } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+const path = Astro.url.pathname;
+
+const links = [
+  { href: `${base}/posts/`, icon: 'posts', label: t(lang, 'nav.posts') },
+  { href: `${base}/projects/`, icon: 'projects', label: t(lang, 'nav.projects') },
+  { href: `${base}/search/`, icon: 'search', label: t(lang, 'nav.search') },
+  { href: `${base}/about/`, icon: 'about', label: t(lang, 'nav.about') },
+] as const;
+
+const isActive = (href: string) => path === href || path.startsWith(href);
+const langSwitchHref =
+  lang === 'zh' ? `/en${path === '/' ? '/' : path}` : path.replace('/en', '') || '/';
+const langSwitchLabel = lang === 'zh' ? 'EN' : '中';
+---
+
+<!-- 桌面固定侧边栏 -->
+<aside class="sidebar">
+  <a class="sidebar-logo" href={lang === 'zh' ? '/' : '/en/'} aria-label="Home">
+    <span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span>
+  </a>
+  <nav class="sidebar-nav" aria-label="Main navigation">
+    {links.map((l) => (
+      <a href={l.href} class={isActive(l.href) ? 'nav-active' : undefined}>
+        <Icon name={l.icon} />
+        <span>{l.label}</span>
+      </a>
+    ))}
+  </nav>
+  <div class="sidebar-foot">
+    <span class="sidebar-clock" data-clock title={lang === 'zh' ? '北京时间' : 'Beijing Time (UTC+8)'}>--:--:--</span>
+    <div class="sidebar-actions">
+      <a class="lang-btn" href={langSwitchHref} aria-label="Switch language">{langSwitchLabel}</a>
+      <button class="theme-btn js-theme-toggle" type="button" title={t(lang, 'theme.toggle')}>
+        <span class="js-theme-icon">☀︎</span>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- 移动端抽屉 -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<aside class="drawer" id="drawer" aria-label="Menu">
+  <div class="drawer-head">
+    <span class="drawer-title"><span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span></span>
+    <button class="theme-btn" id="drawer-close" type="button" aria-label="Close">
+      <Icon name="close" size={16} />
+    </button>
+  </div>
+  <nav class="drawer-nav">
+    {links.map((l) => (
+      <a href={l.href} class={isActive(l.href) ? 'nav-active' : undefined}>
+        <Icon name={l.icon} />
+        <span>{l.label}</span>
+      </a>
+    ))}
+  </nav>
+</aside>
+
+<script>
+  // 抽屉开合：遮罩点击 / Esc 关闭；打开时锁定页面滚动
+  (function () {
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    const closeBtn = document.getElementById('drawer-close');
+    const openBtn = document.querySelector('.js-menu-open');
+    if (!drawer || !overlay) return;
+
+    const setOpen = (open: boolean) => {
+      drawer.classList.toggle('open', open);
+      overlay.classList.toggle('show', open);
+      document.body.style.overflow = open ? 'hidden' : '';
+    };
+
+    openBtn?.addEventListener('click', () => setOpen(true));
+    closeBtn?.addEventListener('click', () => setOpen(false));
+    overlay.addEventListener('click', () => setOpen(false));
+    drawer.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  })();
+</script>

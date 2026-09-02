@@ -77,6 +77,7 @@ export const ui = {
     'giscus.notConfiguredTail': '。',
 
     'theme.toggle': '切换主题',
+    'menu.open': '打开菜单',
   },
 
   en: {
@@ -154,6 +155,7 @@ export const ui = {
     'giscus.notConfiguredTail': '.',
 
     'theme.toggle': 'Toggle theme',
+    'menu.open': 'Open menu',
   },
 } as const;
 

@@ -1,5 +1,5 @@
 ---
-import { SITE } from '../consts';
+import Icon from './Icon.astro';
 import { t, type Lang } from '../i18n/ui';
 
 interface Props {
@@ -8,16 +8,6 @@ interface Props {
 
 const { lang = 'zh' } = Astro.props;
 const path = Astro.url.pathname;
-const isActive = (href: string) =>
-  href === '/' ? path === '/' || path === '/en/' : path.startsWith(href);
-
-const links = [
-  { href: '/posts/', label: t(lang, 'nav.posts') },
-  { href: '/projects/', label: t(lang, 'nav.projects') },
-  { href: '/search/', label: t(lang, 'nav.search') },
-  { href: '/about/', label: t(lang, 'nav.about') },
-];
-
 // 语言切换：/xxx ↔ /en/xxx
 const langSwitchHref =
   lang === 'zh' ? `/en${path === '/' ? '/' : path}` : path.replace('/en', '') || '/';
@@ -29,45 +19,15 @@ const langSwitchLabel = lang === 'zh' ? 'EN' : '中';
     <a href={lang === 'zh' ? '/' : '/en/'} class="logo" aria-label="Home">
       <span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span>
     </a>
-    <nav class="nav" aria-label="Main navigation">
-      {links.map((l) => <a href={(lang === 'en' ? '/en' : '') + l.href} class={isActive(l.href) ? 'nav-active' : undefined}>{l.label}</a>)}
-      <span class="header-clock" id="header-clock" title={lang === 'zh' ? '北京时间' : 'Beijing Time (UTC+8)'}>--:--:--</span>
+    <nav class="nav" aria-label="Utility">
+      <span class="header-clock" data-clock title={lang === 'zh' ? '北京时间' : 'Beijing Time (UTC+8)'}>--:--:--</span>
       <a class="lang-btn" href={langSwitchHref} aria-label="Switch language">{langSwitchLabel}</a>
-      <button class="theme-btn" id="theme-toggle" type="button" title={t(lang, 'theme.toggle')}>
-        <span id="theme-icon">☀︎</span>
+      <button class="theme-btn js-theme-toggle" type="button" title={t(lang, 'theme.toggle')}>
+        <span class="js-theme-icon">☀︎</span>
+      </button>
+      <button class="theme-btn js-menu-open" type="button" aria-label={t(lang, 'menu.open')}>
+        <Icon name="menu" size={16} />
       </button>
     </nav>
   </div>
 </header>
-
-<script>
-  const btn = document.getElementById('theme-toggle');
-  const icon = document.getElementById('theme-icon');
-
-  function syncIcon() {
-    const t = document.documentElement.dataset.theme;
-    if (icon) icon.textContent = t === 'light' ? '☾' : '☀︎';
-  }
-  syncIcon();
-
-  btn?.addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem('theme', next);
-    syncIcon();
-  });
-
-  // 顶部实时北京时间（UTC+8）：手动偏移计算，不依赖访客本地时区
-  function beijingNow() {
-    const d = new Date();
-    const bj = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 8 * 3600000);
-    const p = (n: number) => String(n).padStart(2, '0');
-    return `${p(bj.getHours())}:${p(bj.getMinutes())}:${p(bj.getSeconds())}`;
-  }
-  function tickClock() {
-    const el = document.getElementById('header-clock');
-    if (el) el.textContent = beijingNow();
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
-</script>
