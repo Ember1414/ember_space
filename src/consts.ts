@@ -3,6 +3,8 @@ export const SITE = {
   title: 'Ember 余烬',
   tagline: '星火不熄，代码不止',
   description: '一个开发者的个人博客：记录技术、项目与生活。',
+  // 站点建立日期（用于首页状态栏的运行天数）
+  established: '2026-09-01',
   // 部署后核对实际域名
   url: 'https://ember-space.pages.dev',
   author: 'Ember',

@@ -10,16 +10,18 @@ import { getGitHubRepos } from '../../lib/github';
 const lang: Lang = 'en';
 
 // 展示全部文章；暂无英文翻译的会以中文原文呈现
-const posts = (await getCollection('posts', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
-  .slice(0, 5);
+const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const posts = allPosts.slice(0, 5);
+const tagCount = new Set<string>();
+for (const p of allPosts) for (const tg of p.data.tags) tagCount.add(tg);
 
 const repos = (await getGitHubRepos()).slice(0, 4);
 ---
 
 <BaseLayout lang={lang}>
   <section class="hero anim">
-    <TypeHero lang={lang} />
+    <TypeHero lang={lang} stats={{ posts: allPosts.length, tags: tagCount.size }} />
   </section>
 
   <section class="anim" style="animation-delay: 0.15s;">
@@ -28,7 +30,7 @@ const repos = (await getGitHubRepos()).slice(0, 4);
       <a href="/en/posts/">{t(lang, 'home.viewAll')} →</a>
     </div>
     <div class="post-list">
-      {posts.map((post) => <PostCard post={post} lang={lang} />)}
+      {posts.map((post, i) => <PostCard post={post} lang={lang} num={i + 1} />)}
     </div>
   </section>
 

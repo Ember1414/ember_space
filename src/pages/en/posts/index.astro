@@ -13,6 +13,6 @@ const posts = (await getCollection('posts', ({ data }) => !data.draft))
   <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> ls ./posts</h1>
   <p class="page-sub anim" style="animation-delay: 0.08s;">{tf(lang, 'posts.count', posts.length)}</p>
   <div class="post-list">
-    {posts.map((post, i) => <PostCard post={post} lang={lang} delay={Math.min(0.12 + i * 0.06, 0.5)} />)}
+    {posts.map((post, i) => <PostCard post={post} lang={lang} num={i + 1} delay={Math.min(0.12 + i * 0.06, 0.5)} />)}
   </div>
 </BaseLayout>

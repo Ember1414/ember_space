@@ -6,15 +6,17 @@ interface Props {
   post: CollectionEntry<'posts'>;
   delay?: number;
   lang?: Lang;
+  num?: number;
 }
 
-const { post, delay = 0, lang = 'zh' } = Astro.props;
+const { post, delay = 0, lang = 'zh', num } = Astro.props;
 const base = lang === 'en' ? '/en' : '';
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 ---
 
 <article class="post-item anim" style={delay > 0 ? `animation-delay: ${delay}s;` : undefined}>
   <h3 class="post-item-title">
+    {num !== undefined && <span class="post-num" aria-hidden="true">{String(num).padStart(2, '0')}</span>}
     <a href={`${base}/posts/${post.id}/`}>{post.data.title}</a>
   </h3>
   <p class="post-item-desc">{post.data.description}</p>

@@ -30,7 +30,8 @@ const langSwitchLabel = lang === 'zh' ? 'EN' : '中';
       <span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span>
     </a>
     <nav class="nav" aria-label="Main navigation">
-      {links.map((l) => <a href={(lang === 'en' ? '/en' : '') + l.href} aria-current={isActive(l.href) ? 'true' : undefined}>{l.label}</a>)}
+      {links.map((l) => <a href={(lang === 'en' ? '/en' : '') + l.href} class={isActive(l.href) ? 'nav-active' : undefined}>{l.label}</a>)}
+      <span class="header-clock" id="header-clock" title={lang === 'zh' ? '北京时间' : 'Beijing Time (UTC+8)'}>--:--:--</span>
       <a class="lang-btn" href={langSwitchHref} aria-label="Switch language">{langSwitchLabel}</a>
       <button class="theme-btn" id="theme-toggle" type="button" title={t(lang, 'theme.toggle')}>
         <span id="theme-icon">☀︎</span>
@@ -55,4 +56,18 @@ const langSwitchLabel = lang === 'zh' ? 'EN' : '中';
     localStorage.setItem('theme', next);
     syncIcon();
   });
+
+  // 顶部实时北京时间（UTC+8）：手动偏移计算，不依赖访客本地时区
+  function beijingNow() {
+    const d = new Date();
+    const bj = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 8 * 3600000);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(bj.getHours())}:${p(bj.getMinutes())}:${p(bj.getSeconds())}`;
+  }
+  function tickClock() {
+    const el = document.getElementById('header-clock');
+    if (el) el.textContent = beijingNow();
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
 </script>

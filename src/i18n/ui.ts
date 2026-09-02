@@ -14,6 +14,9 @@ export const ui = {
     'home.latest': '最新文章',
     'home.projects': '我的项目',
     'home.viewAll': '查看全部',
+    'status.posts': (n: number) => `${n} 篇文章`,
+    'status.tags': (n: number) => `${n} 个标签`,
+    'status.up': (d: number) => `已运行 ${d} 天`,
 
     'posts.count': (n: number) => `共 ${n} 篇`,
     'projects.subtitle': '做过的东西，都在这里',
@@ -88,6 +91,9 @@ export const ui = {
     'home.latest': 'Latest Posts',
     'home.projects': 'My Projects',
     'home.viewAll': 'View all',
+    'status.posts': (n: number) => `${n} posts`,
+    'status.tags': (n: number) => `${n} tags`,
+    'status.up': (d: number) => `up ${d} days`,
 
     'posts.count': (n: number) => `${n} posts`,
     'projects.subtitle': 'Things I have built',

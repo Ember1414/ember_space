@@ -23,11 +23,6 @@ const msgs = {
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-clock">
-      <span class="clock-dot" aria-hidden="true"></span>
-      <span>{lang === 'zh' ? '北京时间' : 'Beijing Time'}</span>
-      <time id="footer-clock" datetime="">····--·--·-- --:--:--</time>
-    </div>
     <div>
       <p class="prompt" style="font-size: 0.88rem; margin: 0 0 0.8rem;">{t(lang, 'footer.subscribe')}</p>
       <form class="subscribe" id="subscribe-form">
@@ -50,24 +45,6 @@ const msgs = {
 </footer>
 
 <script define:vars={{ msgs, lang }}>
-  // 实时北京时间（UTC+8）：手动偏移计算，不依赖访客本地时区
-  function beijingNow() {
-    var d = new Date();
-    var bj = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 8 * 3600000);
-    var p = function (n) { return String(n).padStart(2, '0'); };
-    return bj.getFullYear() + '-' + p(bj.getMonth() + 1) + '-' + p(bj.getDate()) +
-      ' ' + p(bj.getHours()) + ':' + p(bj.getMinutes()) + ':' + p(bj.getSeconds());
-  }
-  function tickClock() {
-    var el = document.getElementById('footer-clock');
-    if (!el) return;
-    var s = beijingNow();
-    el.textContent = s;
-    el.setAttribute('datetime', s);
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
-
   const form = document.getElementById('subscribe-form');
   const msg = document.getElementById('subscribe-msg');
 

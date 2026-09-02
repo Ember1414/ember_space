@@ -217,6 +217,21 @@ main.container {
 .term-body {
   padding: 1.25rem 1.5rem;
 }
+.term-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 1.5rem;
+  background: var(--bg-soft);
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.term-status-up {
+  color: var(--accent-text);
+}
 
 .prompt::before {
   content: '$ ';
@@ -281,11 +296,37 @@ main.container {
   color: var(--text-muted);
   font-size: 0.9rem;
   white-space: nowrap;
+  position: relative;
+  padding: 0.2rem 0;
 }
-.nav a:hover,
-.nav a[aria-current='true'] {
+.nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -2px;
+  height: 2px;
+  background: var(--accent);
+  transition: right 0.25s ease;
+}
+.nav a:hover {
   color: var(--accent-text);
   text-decoration: none;
+}
+.nav a:hover::after,
+.nav a.nav-active::after {
+  right: 0;
+}
+.nav a.nav-active {
+  color: var(--accent-text);
+}
+
+.header-clock {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  cursor: default;
+  font-variant-numeric: tabular-nums;
 }
 
 .theme-btn,
@@ -330,25 +371,6 @@ main.container {
   gap: 0.75rem 1.5rem;
   font-size: 0.82rem;
   color: var(--text-muted);
-}
-
-.footer-clock {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-.footer-clock time {
-  color: var(--accent-text);
-}
-.clock-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: blink 2s ease-in-out infinite;
 }
 .footer-meta a {
   color: var(--text-muted);
@@ -434,6 +456,13 @@ main.container {
 .post-item-title {
   font-size: 1.08rem;
   color: var(--text);
+}
+.post-num {
+  color: var(--accent-text);
+  opacity: 0.55;
+  font-size: 0.85em;
+  margin-right: 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 .post-item-title a {
   color: var(--text);
@@ -847,5 +876,8 @@ a.tag:hover {
   }
   .header-inner {
     justify-content: center;
+  }
+  .header-clock {
+    display: none;
   }
 }

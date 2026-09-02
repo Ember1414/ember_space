@@ -1,12 +1,19 @@
 ---
 import { SITE } from '../consts';
-import { t, SITE_I18N, type Lang } from '../i18n/ui';
+import { t, tf, SITE_I18N, type Lang } from '../i18n/ui';
 
 interface Props {
   lang?: Lang;
+  stats: { posts: number; tags: number };
 }
 
-const { lang = 'zh' } = Astro.props;
+const { lang = 'zh', stats } = Astro.props;
+
+// 站点运行天数（构建时计算，每日定时部署保持新鲜）
+const days = Math.max(
+  1,
+  Math.floor((Date.now() - new Date(SITE.established + 'T00:00:00Z').getTime()) / 86400000)
+);
 ---
 
 <div class="term">
@@ -26,6 +33,10 @@ const { lang = 'zh' } = Astro.props;
       <a href="/rss.xml">RSS</a>
       <a href={lang === 'zh' ? '/about/' : '/en/about/'}>{t(lang, 'home.about')} →</a>
     </div>
+  </div>
+  <div class="term-status" data-pagefind-ignore>
+    <span>{tf(lang, 'status.posts', stats.posts)} · {tf(lang, 'status.tags', stats.tags)}</span>
+    <span class="term-status-up">{tf(lang, 'status.up', days)}</span>
   </div>
 </div>
 
