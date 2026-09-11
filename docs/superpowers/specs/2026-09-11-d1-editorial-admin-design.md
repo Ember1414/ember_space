@@ -66,7 +66,7 @@ owner 可生成 1 小时至 30 天有效的一次性 editor 邀请。邀请页�
 
 迁移位于 `migrations/`。`npm run db:migrate` 和 `npm run content:import` 用于本地验证；带 `:remote` 的对应命令用于生产。导入脚本按原文件名写入 slug，并使用 upsert，重复运行不会创建重复文章；覆盖已有 slug 时同步递增文章版本，使已打开的后台编辑器能够检测冲突。导入与后台 API 复用同一字段校验；封面必须是可公开访问的绝对 HTTP/HTTPS URL，无法在 D1 中保留 Astro 的源码相对图片转换。
 
-GitHub Actions 顺序为安装依赖、运行单元测试和类型检查、构建 `dist-pages`、应用远端 D1 migration、部署 Pages。先验证并完成构建再修改生产数据库，避免明显无效的提交先触发 migration。仓库 Secrets 需要 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`；Pages 项目 Secrets 需要 `INITIAL_SETUP_KEY` 和 `SESSION_SECRET`。
+GitHub Actions 顺序为安装依赖、运行单元测试和类型检查、在隔离的本地 D1 上验证 migration、构建并测试 `dist-pages`、部署 Pages。生产 D1 migration 由维护者在部署前使用 `npm run db:migrate:remote` 执行，避免把 D1 权限加入日常 Pages 部署令牌。仓库 Secret 只需要具备 Pages 编辑权限的 `CLOUDFLARE_API_TOKEN`；Pages 项目 Secrets 需要 `INITIAL_SETUP_KEY` 和 `SESSION_SECRET`。
 
 ## 9. 验证
 

@@ -198,10 +198,9 @@ npm run content:import:remote
 
 在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加：
 
-- `CLOUDFLARE_API_TOKEN`：创建一个限制到目标 Cloudflare 账号的 API Token，至少授予 **Cloudflare Pages: Edit** 和 **D1: Edit**，以便工作流迁移数据库并部署 Pages
-- `CLOUDFLARE_ACCOUNT_ID`：Cloudflare Dashboard 中显示的账号 ID
+- `CLOUDFLARE_API_TOKEN`：创建一个限制到目标 Cloudflare 账号和 Pages 项目的 API Token，并授予 **Cloudflare Pages: Edit**
 
-只在 GitHub 的 Secret 输入框中填写真实值，不要把 token 放进工作流 YAML、命令行或仓库文件。推送到 `main` 会自动应用尚未执行的远端 migration、构建并部署；工作流也支持手动触发，并在每天北京时间 10:30 运行以刷新 GitHub 仓库数据。
+只在 GitHub 的 Secret 输入框中填写真实值，不要把 token 放进工作流 YAML、命令行或仓库文件。生产 D1 migration 由维护者在部署前通过 `npm run db:migrate:remote` 执行；CI 会在隔离的本地 D1 上验证全部 migration。推送到 `main` 会自动测试、构建并部署；工作流也支持手动触发，并在每天北京时间 10:30 运行以刷新 GitHub 仓库数据。
 
 ### 6. 构建与部署
 
