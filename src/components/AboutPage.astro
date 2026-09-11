@@ -62,7 +62,7 @@ const labels = isZh
             <p class="contact-title">{labels.contact}</p>
             <a href={SITE.social.email}><Mail size={18} aria-hidden="true" /><span>{SITE.social.email.replace('mailto:', '')}</span></a>
             <a href={SITE.social.github} target="_blank" rel="noopener"><Github size={18} aria-hidden="true" /><span>GitHub</span></a>
-            <a href="/rss.xml"><Rss size={18} aria-hidden="true" /><span>{labels.rss}</span></a>
+            <a href={`${base}/rss/`}><Rss size={18} aria-hidden="true" /><span>{labels.rss}</span></a>
           </nav>
         </aside>
       </div>

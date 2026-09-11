@@ -89,7 +89,7 @@ const empty = isZh
                 ) : (
                   <div class="card-media feature-post-fallback" aria-hidden="true">
                     <span>ARTICLE</span>
-                    <strong>{String(featuredPost.data.pubDate.getFullYear()).slice(-2)}</strong>
+                    <strong>{featuredPost.data.pubDate.getFullYear()}</strong>
                   </div>
                 )}
                 <div class="card-body">
@@ -98,6 +98,7 @@ const empty = isZh
                   <p>{featuredPost.data.description}</p>
                   <div class="feature-meta">
                     <time datetime={featuredDate}>{featuredDate}</time>
+                    <span>{tf(lang, 'home.featuredYear', featuredPost.data.pubDate.getFullYear())}</span>
                     <span>{tf(lang, 'post.min', featuredMinutes)}</span>
                   </div>
                   <ul class="tag-list">
@@ -241,7 +242,7 @@ const empty = isZh
   .feature-post-fallback strong {
     position: relative;
     color: var(--accent);
-    font-size: 3.4rem;
+    font-size: 2.7rem;
     line-height: 0.8;
   }
 

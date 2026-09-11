@@ -80,7 +80,7 @@ const languageLabel = lang === 'zh' ? 'EN' : '中';
   </nav>
   <div class="mobile-menu-foot">
     {languageHref && <a href={languageHref}>{t(lang, 'a11y.switchLanguage')}</a>}
-    <a href="/rss.xml">RSS</a>
+    <a href={`${base}/rss/`}>RSS</a>
   </div>
 </dialog>
 

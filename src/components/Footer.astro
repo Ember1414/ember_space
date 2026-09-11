@@ -19,7 +19,7 @@ const year = new Date().getFullYear();
       <h2>{t(lang, 'footer.rssTitle')}</h2>
       <p>{t(lang, 'footer.rssText')}</p>
     </div>
-    <a class="button button--primary" href="/rss.xml" aria-label={t(lang, 'a11y.rss')}>
+    <a class="button button--primary" href={`${base}/rss/`} aria-label={t(lang, 'a11y.rss')}>
       <Rss size={18} aria-hidden="true" />
       {t(lang, 'footer.rssButton')}
     </a>
@@ -35,7 +35,7 @@ const year = new Date().getFullYear();
         <a href={SITE.social.email} aria-label={t(lang, 'a11y.email')} title="Email">
           <Mail size={18} aria-hidden="true" />
         </a>
-        <a href="/rss.xml" aria-label={t(lang, 'a11y.rss')} title="RSS">
+        <a href={`${base}/rss/`} aria-label={t(lang, 'a11y.rss')} title="RSS">
           <Rss size={18} aria-hidden="true" />
         </a>
         <a href={`${base}/about/`}>{t(lang, 'nav.about')}</a>

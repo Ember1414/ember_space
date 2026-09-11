@@ -1,0 +1,188 @@
+---
+import { Check, Copy, ExternalLink, Rss } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../consts';
+import { t, type Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+const feedUrl = new URL('/rss.xml', Astro.site ?? SITE.url).href;
+---
+
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'rss.title')}
+  description={t(lang, 'rss.text')}
+  canonicalPath={`${base}/rss/`}
+  alternatePath={lang === 'zh' ? '/en/rss/' : '/rss/'}
+>
+  <section class="rss-page shell" data-pagefind-ignore>
+    <header class="page-intro rss-intro anim">
+      <p class="eyebrow">{t(lang, 'rss.eyebrow')}</p>
+      <h1 class="page-title">{t(lang, 'rss.title')}</h1>
+      <p class="rss-lede">{t(lang, 'rss.text')}</p>
+    </header>
+
+    <div class="rss-card card anim">
+      <div class="rss-card-head">
+        <Rss size={24} aria-hidden="true" />
+        <div>
+          <p class="feature-label">{t(lang, 'rss.feedLabel')}</p>
+          <p class="rss-tip">{t(lang, 'rss.tip')}</p>
+        </div>
+      </div>
+      <div class="rss-url-row">
+        <code id="rss-feed-url">{feedUrl}</code>
+        <button class="button button--secondary rss-copy" type="button" data-copy-rss>
+          <Copy class="copy-icon" size={17} aria-hidden="true" />
+          <Check class="check-icon" size={17} aria-hidden="true" />
+          <span data-copy-label>{t(lang, 'rss.copy')}</span>
+        </button>
+      </div>
+      <a class="rss-raw-link" href="/rss.xml">
+        <ExternalLink size={16} aria-hidden="true" />
+        {t(lang, 'rss.openFeed')}
+      </a>
+    </div>
+  </section>
+</BaseLayout>
+
+<script define:vars={{ copiedLabel: t(lang, 'rss.copied'), copyLabel: t(lang, 'rss.copy') }}>
+  const button = document.querySelector<HTMLButtonElement>('[data-copy-rss]');
+  const url = document.querySelector<HTMLElement>('#rss-feed-url');
+  const label = button?.querySelector<HTMLElement>('[data-copy-label]');
+
+  async function copyFeedUrl() {
+    if (!button || !url || !label) return;
+    try {
+      await navigator.clipboard.writeText(url.textContent ?? '');
+      button.dataset.copied = 'true';
+      label.textContent = copiedLabel;
+      window.setTimeout(() => {
+        button.dataset.copied = 'false';
+        label.textContent = copyLabel;
+      }, 1800);
+    } catch {
+      label.textContent = url.textContent ?? copyLabel;
+    }
+  }
+
+  button?.addEventListener('click', copyFeedUrl);
+</script>
+
+<style>
+  .rss-page {
+    min-height: calc(100svh - var(--header-height) - 250px);
+    padding-block: 72px 96px;
+  }
+
+  .rss-intro {
+    max-width: 760px;
+    margin-bottom: 42px;
+  }
+
+  .rss-lede {
+    max-width: 62ch;
+    margin: 18px 0 0;
+    color: var(--text-muted);
+    font-size: 1.08rem;
+    line-height: 1.8;
+  }
+
+  .rss-card {
+    max-width: 860px;
+    padding: clamp(24px, 5vw, 48px);
+  }
+
+  .rss-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .rss-card-head > :global(svg) {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: var(--accent);
+  }
+
+  .rss-card-head .feature-label {
+    margin: 0 0 8px !important;
+  }
+
+  .rss-tip {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .rss-url-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .rss-url-row code {
+    min-width: 0;
+    flex: 1;
+    overflow-wrap: anywhere;
+    padding: 0.78rem 0.85rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+    background: var(--surface-soft);
+    color: var(--text-soft);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .rss-copy {
+    flex: 0 0 auto;
+  }
+
+  .rss-copy .check-icon {
+    display: none;
+  }
+
+  .rss-copy[data-copied='true'] {
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  .rss-copy[data-copied='true'] .copy-icon {
+    display: none;
+  }
+
+  .rss-copy[data-copied='true'] .check-icon {
+    display: inline-block;
+  }
+
+  .rss-raw-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 20px;
+    color: var(--text-soft);
+    font-weight: 700;
+  }
+
+  @media (max-width: 640px) {
+    .rss-page {
+      padding-block: 52px 72px;
+    }
+
+    .rss-url-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .rss-copy {
+      align-self: flex-start;
+    }
+  }
+</style>
