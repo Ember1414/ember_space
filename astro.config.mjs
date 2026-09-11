@@ -6,7 +6,18 @@ import { SITE } from './src/consts';
 
 export default defineConfig({
   site: SITE.url,
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      // Keep locale-aware status pages (such as /en/404/) out of the sitemap.
+      i18n: {
+        defaultLocale: 'zh',
+        locales: {
+          zh: 'zh-CN',
+          en: 'en',
+        },
+      },
+    }),
+  ],
   i18n: {
     defaultLocale: 'zh',
     locales: ['zh', 'en'],

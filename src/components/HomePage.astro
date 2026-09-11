@@ -1,0 +1,289 @@
+---
+import { Image } from 'astro:assets';
+import { getCollection } from 'astro:content';
+import { ArrowRight } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t, tf, type Lang } from '../i18n/ui';
+import { getGitHubRepos } from '../lib/github';
+import Hero from './Hero.astro';
+import PostCard from './PostCard.astro';
+import ProjectCard from './ProjectCard.astro';
+import RepoCard from './RepoCard.astro';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const isZh = lang === 'zh';
+const base = isZh ? '' : '/en';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft && data.lang === lang))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const projects = (await getCollection('projects', ({ data }) => data.lang === lang))
+  .sort((a, b) => a.data.order - b.data.order || b.data.year - a.data.year);
+
+const featuredPost = posts.find(({ data }) => data.featured) ?? posts[0];
+const featuredProject = projects.find(({ data }) => data.featured) ?? projects[0];
+const latestPosts = posts.filter(({ id }) => id !== featuredPost?.id).slice(0, 4);
+const featuredRepoUrl = featuredProject?.data.repo?.replace(/\/$/, '').toLowerCase();
+const repos = (await getGitHubRepos())
+  .filter(({ html_url }) => html_url.replace(/\/$/, '').toLowerCase() !== featuredRepoUrl)
+  .slice(0, 4);
+
+const featuredDate = featuredPost?.data.pubDate.toISOString().slice(0, 10);
+const featuredMinutes = featuredPost
+  ? Math.max(1, Math.round((featuredPost.body?.replace(/\s/g, '').length ?? 0) / 400))
+  : 0;
+
+const empty = isZh
+  ? {
+      postsTitle: '文章正在整理中',
+      postsText: '这里会展示经过整理的工程笔记与实践记录。',
+      projectsTitle: '项目案例正在整理中',
+      projectsText: '这里会展示有公开依据的项目背景、职责与实现亮点。',
+      archiveLink: '浏览中文内容',
+    }
+  : {
+      postsTitle: 'English writing is in progress',
+      postsText: 'No English post has been published yet. The Chinese archive is available now.',
+      projectsTitle: 'English case studies are in progress',
+      projectsText: 'No project case study has an English edition yet. Public repositories remain available below.',
+      archiveLink: 'Browse the Chinese site',
+    };
+---
+
+<BaseLayout
+  lang={lang}
+  wide
+  canonicalPath={isZh ? '/' : '/en/'}
+  alternatePath={isZh ? '/en/' : '/'}
+>
+  <div class="home-page" data-pagefind-filter={`lang:${lang}`}>
+    <Hero lang={lang} />
+
+    <section class="section-band home-focus" aria-labelledby={`home-focus-${lang}`}>
+      <div class="shell">
+        <header class="section-head anim">
+          <div>
+            <p class="eyebrow">ISSUE 01 / EDITOR'S PICK</p>
+            <h2 id={`home-focus-${lang}`}>{t(lang, 'home.featured')}</h2>
+            <p>{t(lang, 'home.featuredIntro')}</p>
+          </div>
+        </header>
+
+        <div class="feature-grid">
+          <div data-pagefind-filter="type:posts">
+            {featuredPost ? (
+              <article class="card feature-post anim">
+                {featuredPost.data.cover ? (
+                  <div class="card-media">
+                    <Image
+                      src={featuredPost.data.cover}
+                      alt={featuredPost.data.coverAlt ?? ''}
+                      widths={[480, 760]}
+                      sizes="(max-width: 760px) 100vw, 50vw"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div class="card-media feature-post-fallback" aria-hidden="true">
+                    <span>ARTICLE</span>
+                    <strong>{String(featuredPost.data.pubDate.getFullYear()).slice(-2)}</strong>
+                  </div>
+                )}
+                <div class="card-body">
+                  <p class="feature-label">{t(lang, 'home.featuredPost')}</p>
+                  <h3><a href={`${base}/posts/${featuredPost.id}/`}>{featuredPost.data.title}</a></h3>
+                  <p>{featuredPost.data.description}</p>
+                  <div class="feature-meta">
+                    <time datetime={featuredDate}>{featuredDate}</time>
+                    <span>{tf(lang, 'post.min', featuredMinutes)}</span>
+                  </div>
+                  <ul class="tag-list">
+                    {featuredPost.data.tags.slice(0, 3).map((tag) => (
+                      <li><a class="tag" href={`${base}/tags/${encodeURIComponent(tag)}/`}>{tag}</a></li>
+                    ))}
+                  </ul>
+                  <a class="feature-link" href={`${base}/posts/${featuredPost.id}/`}>
+                    {t(lang, 'home.readPosts')}
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </a>
+                </div>
+              </article>
+            ) : (
+              <article class="empty-state home-empty anim">
+                <h3>{empty.postsTitle}</h3>
+                <p>{empty.postsText}</p>
+                {!isZh && <a class="feature-link" href="/posts/">{empty.archiveLink} <ArrowRight size={16} aria-hidden="true" /></a>}
+              </article>
+            )}
+          </div>
+
+          <div class="featured-project anim" data-pagefind-filter="type:projects">
+            {featuredProject ? (
+              <ProjectCard project={featuredProject} lang={lang} />
+            ) : (
+              <article class="empty-state home-empty">
+                <h3>{empty.projectsTitle}</h3>
+                <p>{empty.projectsText}</p>
+                {!isZh && <a class="feature-link" href="/projects/">{empty.archiveLink} <ArrowRight size={16} aria-hidden="true" /></a>}
+              </article>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-band section-band--soft" aria-labelledby={`home-latest-${lang}`} data-pagefind-filter="type:posts">
+      <div class="shell anim">
+        <header class="section-head">
+          <div>
+            <p class="eyebrow">RECENT NOTES</p>
+            <h2 id={`home-latest-${lang}`}>{t(lang, 'home.latest')}</h2>
+          </div>
+          <a class="section-link" href={`${base}/posts/`}>{t(lang, 'home.viewAll')} <span aria-hidden="true">→</span></a>
+        </header>
+
+        {latestPosts.length > 0 ? (
+          <ol class="post-list">
+            {latestPosts.map((post) => <PostCard post={post} lang={lang} headingLevel={3} />)}
+          </ol>
+        ) : (
+          <div class="empty-state">
+            <h3>{empty.postsTitle}</h3>
+            <p>{empty.postsText}</p>
+          </div>
+        )}
+      </div>
+    </section>
+
+    <section class="section-band" aria-labelledby={`home-projects-${lang}`} data-pagefind-filter="type:projects">
+      <div class="shell anim">
+        <header class="section-head">
+          <div>
+            <p class="eyebrow">OPEN SOURCE / GITHUB</p>
+            <h2 id={`home-projects-${lang}`}>{t(lang, 'home.projects')}</h2>
+          </div>
+          <a class="section-link" href={`${base}/projects/`}>{t(lang, 'home.viewAll')} <span aria-hidden="true">→</span></a>
+        </header>
+
+        {repos.length > 0 ? (
+          <div class="repo-list">
+            {repos.map((repo) => <RepoCard repo={repo} lang={lang} />)}
+          </div>
+        ) : (
+          <div class="empty-state">
+            <h3>{empty.projectsTitle}</h3>
+            <p>{empty.projectsText}</p>
+          </div>
+        )}
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .home-focus {
+    background: var(--bg);
+  }
+
+  .home-focus .section-head {
+    align-items: start;
+  }
+
+  .feature-grid > div {
+    min-width: 0;
+  }
+
+  .feature-post,
+  .featured-project,
+  .home-empty {
+    height: 100%;
+  }
+
+  .featured-project :global(.project-card) {
+    height: 100%;
+  }
+
+  .feature-post-fallback {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 24px;
+    background: var(--surface-strong);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .feature-post-fallback::before,
+  .feature-post-fallback::after {
+    position: absolute;
+    background: var(--border-strong);
+    content: '';
+  }
+
+  .feature-post-fallback::before {
+    top: 22%;
+    right: 24px;
+    bottom: 24px;
+    width: 1px;
+  }
+
+  .feature-post-fallback::after {
+    right: 24px;
+    bottom: 24px;
+    left: 22%;
+    height: 1px;
+  }
+
+  .feature-post-fallback strong {
+    position: relative;
+    color: var(--accent);
+    font-size: 3.4rem;
+    line-height: 0.8;
+  }
+
+  .feature-label {
+    margin-bottom: 10px !important;
+    color: var(--accent) !important;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .feature-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-bottom: 14px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+  }
+
+  .feature-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 7px;
+    margin-top: 20px;
+    font-weight: 750;
+  }
+
+  .home-empty {
+    min-height: 300px;
+  }
+
+  .home-empty .feature-link {
+    margin-top: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .home-empty {
+      min-height: 0;
+    }
+  }
+</style>

@@ -1,0 +1,211 @@
+---
+import { Image } from 'astro:assets';
+import { ArrowRight, BookOpen, FolderGit2 } from 'lucide-astro';
+import heroImage from '../assets/ember-hero.webp';
+import { SITE } from '../consts';
+import { t, type Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+---
+
+<section class="home-hero" aria-labelledby="hero-title">
+  <Image
+    class="hero-image"
+    src={heroImage}
+    alt=""
+    widths={[720, 1080, 1440, 1920]}
+    sizes="100vw"
+    loading="eager"
+    fetchpriority="high"
+    quality={88}
+  />
+  <div class="hero-tint" aria-hidden="true"></div>
+  <div class="hero-content shell anim">
+    <p class="hero-kicker"><span aria-hidden="true"></span>{t(lang, 'home.kicker')}</p>
+    <h1 id="hero-title">{SITE.title}</h1>
+    <p class="hero-position">{t(lang, 'home.intro')} {SITE.author}</p>
+    <p class="hero-lede">{t(lang, 'home.lede')}</p>
+    <div class="button-row">
+      <a class="hero-button hero-button--primary" href={`${base}/posts/`}>
+        <BookOpen size={18} aria-hidden="true" />
+        {t(lang, 'home.readPosts')}
+        <ArrowRight size={17} aria-hidden="true" />
+      </a>
+      <a class="hero-button" href={`${base}/projects/`}>
+        <FolderGit2 size={18} aria-hidden="true" />
+        {t(lang, 'home.viewProjects')}
+      </a>
+    </div>
+  </div>
+  <div class="hero-index shell" aria-hidden="true">
+    <span>001 / EMBER</span>
+    <span>BUILD · WRITE · SHARE</span>
+  </div>
+</section>
+
+<style>
+  .home-hero {
+    position: relative;
+    display: flex;
+    min-height: min(680px, calc(100svh - var(--header-height) - 78px));
+    overflow: hidden;
+    align-items: center;
+    background: #090b0a;
+    color: #f6f4ef;
+    isolation: isolate;
+  }
+
+  .hero-image,
+  .hero-tint {
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-image {
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .hero-tint {
+    z-index: -1;
+    background: rgb(5 7 6 / 26%);
+  }
+
+  .hero-content {
+    padding-block: 72px 92px;
+  }
+
+  .hero-kicker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    color: #d9b4a7;
+    font-family: var(--font-mono);
+    font-size: 0.77rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .hero-kicker span {
+    width: 26px;
+    height: 2px;
+    background: #ef704d;
+  }
+
+  h1 {
+    max-width: 760px;
+    margin: 0;
+    color: #fff;
+    font-size: 4.8rem;
+    line-height: 0.98;
+  }
+
+  .hero-position {
+    margin: 20px 0 0;
+    color: #f4c2b1;
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+  }
+
+  .hero-lede {
+    max-width: 600px;
+    margin: 14px 0 30px;
+    color: #d6dcd8;
+    font-size: 1.12rem;
+    line-height: 1.7;
+  }
+
+  .hero-button {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 0.66rem 1rem;
+    border: 1px solid rgb(255 255 255 / 35%);
+    border-radius: 5px;
+    background: rgb(9 12 10 / 56%);
+    color: #fff;
+    font-weight: 750;
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero-button:hover {
+    border-color: #fff;
+    color: #fff;
+  }
+
+  .hero-button--primary {
+    border-color: #e55f3c;
+    background: #c94b2d;
+  }
+
+  .hero-button--primary:hover {
+    background: #e05e3c;
+  }
+
+  .hero-index {
+    position: absolute;
+    right: 0;
+    bottom: 18px;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    color: rgb(255 255 255 / 56%);
+    font-family: var(--font-mono);
+    font-size: 0.67rem;
+  }
+
+  @media (max-width: 760px) {
+    .home-hero {
+      min-height: min(620px, calc(100svh - var(--header-height) - 48px));
+    }
+
+    .hero-image {
+      object-position: 58% center;
+    }
+
+    .hero-tint {
+      background: rgb(5 7 6 / 45%);
+    }
+
+    .hero-content {
+      padding-block: 58px 76px;
+    }
+
+    h1 {
+      max-width: 8ch;
+      font-size: 3.25rem;
+    }
+
+    .hero-lede {
+      max-width: 30rem;
+      font-size: 1rem;
+    }
+
+    .hero-index span:last-child {
+      display: none;
+    }
+  }
+
+  @media (max-width: 390px) {
+    .button-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .hero-button {
+      width: 100%;
+    }
+  }
+</style>

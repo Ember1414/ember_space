@@ -20,6 +20,4 @@ Cloudflare Pages 对个人项目非常慷慨：无限带宽、每月 500 次构�
 
 ## Pages Functions
 
-邮件订阅这类小后端用 Pages Functions 实现：仓库里的 `functions/` 目录会自动变成 API 路由，比如 `functions/api/subscribe.ts` 就是 `POST /api/subscribe`。
-
-订阅邮箱存储用 Cloudflare KV，免费额度每天 10 万次读、1000 次写，个人博客绰绰有余。
+需要小型服务端功能时，可以通过 Pages Functions 增加 API 路由，再按数据特点连接 KV 等存储。本博客当前只使用 RSS 发布更新，不收集订阅邮箱。

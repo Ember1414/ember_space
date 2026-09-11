@@ -1,93 +1,95 @@
 ---
-import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import Sidebar from '../components/Sidebar.astro';
+import Header from '../components/Header.astro';
+import emberHero from '../assets/ember-hero.webp';
 import { SITE } from '../consts';
-import { SITE_I18N, type Lang } from '../i18n/ui';
+import { SITE_I18N, t, type Lang } from '../i18n/ui';
 import '../styles/global.css';
 
 interface Props {
   lang?: Lang;
   title?: string;
   description?: string;
+  wide?: boolean;
+  alternatePath?: string | null;
+  canonicalPath?: string;
+  image?: string;
+  pageType?: 'website' | 'article';
+  publishedDate?: Date;
+  updatedDate?: Date;
+  noindex?: boolean;
 }
 
-const { lang = 'zh', title, description } = Astro.props;
+const {
+  lang = 'zh',
+  title,
+  description,
+  wide = false,
+  alternatePath,
+  canonicalPath,
+  image,
+  pageType = 'website',
+  publishedDate,
+  updatedDate,
+  noindex = false,
+} = Astro.props;
+
 const pageTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SITE_I18N[lang].tagline}`;
 const desc = description ?? SITE_I18N[lang].description;
-
-// 语言互链：/xxx ↔ /en/xxx
-const path = Astro.url.pathname;
-const otherLang: Lang = lang === 'zh' ? 'en' : 'zh';
-const otherPath = lang === 'zh' ? `/en${path}` : path.replace('/en', '') || '/';
-const otherAbs = new URL(otherPath, Astro.site ?? SITE.url).href;
-const selfAbs = new URL(path, Astro.site ?? SITE.url).href;
+const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, Astro.site ?? SITE.url);
+const alternateLang: Lang = lang === 'zh' ? 'en' : 'zh';
+const alternateUrl = alternatePath ? new URL(alternatePath, Astro.site ?? SITE.url) : null;
+const imageUrl = new URL(image ?? emberHero.src, Astro.site ?? SITE.url).href;
 ---
 
 <!doctype html>
-<html lang={lang === 'zh' ? 'zh-CN' : 'en'} data-theme="dark">
+<html lang={lang === 'zh' ? 'zh-CN' : 'en'}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#0e1110" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f6f5" media="(prefers-color-scheme: light)" />
+    <link rel="canonical" href={canonicalUrl.href} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />
-    <link rel="alternate" hreflang={lang} href={selfAbs} />
-    <link rel="alternate" hreflang={otherLang} href={otherAbs} />
+    <link rel="alternate" hreflang={lang === 'zh' ? 'zh-CN' : 'en'} href={canonicalUrl.href} />
+    {alternateUrl && <link rel="alternate" hreflang={alternateLang === 'zh' ? 'zh-CN' : 'en'} href={alternateUrl.href} />}
+    <meta property="og:site_name" content={SITE.title} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={desc} />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content={selfAbs} />
+    <meta property="og:type" content={pageType} />
+    <meta property="og:url" content={canonicalUrl.href} />
     <meta property="og:locale" content={lang === 'zh' ? 'zh_CN' : 'en_US'} />
-    <meta property="og:locale:alternate" content={lang === 'zh' ? 'en_US' : 'zh_CN'} />
+    {alternateUrl && <meta property="og:locale:alternate" content={alternateLang === 'zh' ? 'zh_CN' : 'en_US'} />}
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:alt" content={title ?? SITE.title} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content={imageUrl} />
+    {publishedDate && <meta property="article:published_time" content={publishedDate.toISOString()} />}
+    {updatedDate && <meta property="article:modified_time" content={updatedDate.toISOString()} />}
     <script is:inline>
-      // 防 FOUC：默认暗色（站点主打风格），用户手动切换后记住选择
-      (function () {
-        var t = localStorage.getItem('theme') || 'dark';
-        document.documentElement.dataset.theme = t;
-      })();
-      // 浏览器语言跳转：仅首次访问根路径时按浏览器语言跳转（session 内只提示一次）
       (function () {
         try {
-          if (location.pathname === '/' && !sessionStorage.getItem('langChecked')) {
-            sessionStorage.setItem('langChecked', '1');
-            var nav = (navigator.language || 'zh').toLowerCase();
-            if (nav.indexOf('zh') !== 0) location.replace('/en/');
-          }
-        } catch {}
-      })();
-      // 打字机前置：仅首页、且用户未偏好减弱动效时，先隐藏打字行；2.5s 兜底强制显示
-      (function () {
-        try {
-          if (
-            location.pathname === '/' &&
-            !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          ) {
-            document.documentElement.classList.add('js-typing');
-          }
-          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            document.documentElement.classList.add('js-anim');
-          }
-        } catch {}
-        setTimeout(function () {
-          document.documentElement.classList.remove('js-typing');
-          // 兜底：仅当 reveal 脚本未成功初始化时才强制显示（正常时 __revealOk 已置位）
-          if (!window.__revealOk) {
-            document.querySelectorAll('.anim').forEach(function (el) {
-              el.classList.add('is-visible');
-            });
-          }
-        }, 2500);
+          var stored = localStorage.getItem('theme');
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.theme = stored || (systemDark ? 'dark' : 'light');
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+        }
       })();
     </script>
   </head>
   <body>
-    <Header lang={lang} />
-    <Sidebar lang={lang} />
-    <main class="container">
+    <a class="skip-link" href="#main-content">{t(lang, 'a11y.skip')}</a>
+    <Header lang={lang} alternatePath={alternatePath} />
+    <main id="main-content" class:list={['site-main', { 'site-main--home': wide }]} tabindex="-1">
       <slot />
     </main>
     <Footer lang={lang} />
@@ -95,61 +97,22 @@ const selfAbs = new URL(path, Astro.site ?? SITE.url).href;
 </html>
 
 <script>
-  // 主题切换：多实例（桌面侧边栏 / 移动顶栏），同步所有图标
-  function syncThemeIcons() {
-    const t = document.documentElement.dataset.theme;
-    document.querySelectorAll('.js-theme-icon').forEach((i) => {
-      i.textContent = t === 'light' ? '☾' : '☀︎';
+  function syncThemeControls() {
+    const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    document.querySelectorAll<HTMLButtonElement>('.js-theme-toggle').forEach((button) => {
+      const label = current === 'dark' ? button.dataset.labelLight : button.dataset.labelDark;
+      if (label) button.setAttribute('aria-label', label);
     });
   }
-  syncThemeIcons();
-  document.querySelectorAll('.js-theme-toggle').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+
+  syncThemeControls();
+  document.querySelectorAll<HTMLButtonElement>('.js-theme-toggle').forEach((button) => {
+    button.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
       localStorage.setItem('theme', next);
-      syncThemeIcons();
+      syncThemeControls();
+      document.dispatchEvent(new CustomEvent('ember:theme', { detail: { theme: next } }));
     });
   });
-
-  // 顶部/侧边栏实时北京时间（UTC+8）：手动偏移计算，不依赖访客本地时区
-  function beijingNow() {
-    const d = new Date();
-    const bj = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 8 * 3600000);
-    const p = (n: number) => String(n).padStart(2, '0');
-    return `${p(bj.getHours())}:${p(bj.getMinutes())}:${p(bj.getSeconds())}`;
-  }
-  function tickClock() {
-    document.querySelectorAll('[data-clock]').forEach((el) => {
-      el.textContent = beijingNow();
-    });
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
-
-  // 滚动显现：.anim 元素进入视口时触发 fade-up；元素自带的 animation-delay 依次错开
-  (function () {
-    const els = Array.from(document.querySelectorAll<HTMLElement>('.anim'));
-    const root = document.documentElement;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (reduced || !('IntersectionObserver' in window) || !root.classList.contains('js-anim')) {
-      els.forEach((el) => el.classList.add('is-visible'));
-      return;
-    }
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            (e.target as HTMLElement).classList.add('is-visible');
-            io.unobserve(e.target);
-          }
-        }
-      },
-      { rootMargin: '0px 0px -12% 0px', threshold: 0.05 }
-    );
-    els.forEach((el) => io.observe(el));
-    window.__revealOk = true;
-  })();
 </script>

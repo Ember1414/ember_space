@@ -3,6 +3,7 @@ title: '你好，世界：这个博客是如何搭建的'
 description: '用 Astro + Cloudflare Pages 从零搭建一个免费的极客风个人博客，完整记录技术选型与部署过程。'
 pubDate: 2026-08-30
 tags: ['Astro', 'Cloudflare', '建站']
+featured: true
 ---
 
 欢迎来到我的博客！这是第一篇文章，记录一下这个站点是如何搭建的。

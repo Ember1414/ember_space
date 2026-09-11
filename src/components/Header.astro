@@ -1,33 +1,332 @@
 ---
-import Icon from './Icon.astro';
+import { Menu, Moon, Search, Sun, X } from 'lucide-astro';
 import { t, type Lang } from '../i18n/ui';
 
 interface Props {
   lang?: Lang;
+  alternatePath?: string | null;
 }
 
-const { lang = 'zh' } = Astro.props;
+const { lang = 'zh', alternatePath } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
 const path = Astro.url.pathname;
-// 语言切换：/xxx ↔ /en/xxx
-const langSwitchHref =
-  lang === 'zh' ? `/en${path === '/' ? '/' : path}` : path.replace('/en', '') || '/';
-const langSwitchLabel = lang === 'zh' ? 'EN' : '中';
+
+const links = [
+  { href: `${base}/posts/`, label: t(lang, 'nav.posts') },
+  { href: `${base}/projects/`, label: t(lang, 'nav.projects') },
+  { href: `${base}/about/`, label: t(lang, 'nav.about') },
+] as const;
+
+const isActive = (href: string) => path === href || path.startsWith(href);
+const defaultAlternate = lang === 'zh' ? `/en${path === '/' ? '/' : path}` : path.replace(/^\/en/, '') || '/';
+const languageHref = alternatePath === undefined ? defaultAlternate : alternatePath;
+const languageLabel = lang === 'zh' ? 'EN' : '中';
 ---
 
 <header class="site-header">
-  <div class="header-inner">
-    <a href={lang === 'zh' ? '/' : '/en/'} class="logo" aria-label="Home">
-      <span class="path">~</span>/<span class="bin">ember</span><span class="path"> $</span>
+  <div class="header-shell">
+    <a class="brand" href={base || '/'} aria-label={t(lang, 'a11y.home')}>
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">EMBER</span>
+      <span class="brand-cn">余烬</span>
     </a>
-    <nav class="nav" aria-label="Utility">
-      <span class="header-clock" data-clock title={lang === 'zh' ? '北京时间' : 'Beijing Time (UTC+8)'}>--:--:--</span>
-      <a class="lang-btn" href={langSwitchHref} aria-label="Switch language">{langSwitchLabel}</a>
-      <button class="theme-btn js-theme-toggle" type="button" title={t(lang, 'theme.toggle')}>
-        <span class="js-theme-icon">☀︎</span>
+
+    <nav class="desktop-nav" aria-label={t(lang, 'a11y.primaryNav')}>
+      {links.map((link) => (
+        <a href={link.href} aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a>
+      ))}
+    </nav>
+
+    <nav class="header-actions" aria-label={t(lang, 'a11y.utilityNav')}>
+      <a class="icon-button search-button" href={`${base}/search/`} aria-label={t(lang, 'a11y.search')} title={t(lang, 'a11y.search')}>
+        <Search size={18} stroke-width={1.8} />
+      </a>
+      {languageHref && (
+        <a class="language-button" href={languageHref} aria-label={t(lang, 'a11y.switchLanguage')}>
+          {languageLabel}
+        </a>
+      )}
+      <button
+        class="icon-button js-theme-toggle"
+        type="button"
+        aria-label={t(lang, 'theme.toLight')}
+        title={t(lang, 'theme.toggle')}
+        data-label-light={t(lang, 'theme.toLight')}
+        data-label-dark={t(lang, 'theme.toDark')}
+      >
+        <Sun class="theme-icon theme-icon--sun" size={18} stroke-width={1.8} aria-hidden="true" />
+        <Moon class="theme-icon theme-icon--moon" size={18} stroke-width={1.8} aria-hidden="true" />
       </button>
-      <button class="theme-btn js-menu-open" type="button" aria-label={t(lang, 'menu.open')}>
-        <Icon name="menu" size={16} />
+      <button class="icon-button menu-button" type="button" aria-label={t(lang, 'menu.open')} aria-controls="mobile-menu" aria-expanded="false">
+        <Menu size={20} stroke-width={1.8} aria-hidden="true" />
       </button>
     </nav>
   </div>
 </header>
+
+<dialog class="mobile-menu" id="mobile-menu" aria-label={t(lang, 'a11y.primaryNav')}>
+  <div class="mobile-menu-head">
+    <span class="mono">EMBER / {languageLabel === 'EN' ? 'ZH' : 'EN'}</span>
+    <button class="icon-button menu-close" type="button" aria-label={t(lang, 'menu.close')}>
+      <X size={20} stroke-width={1.8} aria-hidden="true" />
+    </button>
+  </div>
+  <nav class="mobile-menu-nav" aria-label={t(lang, 'a11y.primaryNav')}>
+    <a href={base || '/'} aria-current={path === `${base}/` ? 'page' : undefined}>{t(lang, 'nav.home')}</a>
+    {links.map((link) => (
+      <a href={link.href} aria-current={isActive(link.href) ? 'page' : undefined}>{link.label}</a>
+    ))}
+    <a href={`${base}/search/`} aria-current={isActive(`${base}/search/`) ? 'page' : undefined}>{t(lang, 'nav.search')}</a>
+  </nav>
+  <div class="mobile-menu-foot">
+    {languageHref && <a href={languageHref}>{t(lang, 'a11y.switchLanguage')}</a>}
+    <a href="/rss.xml">RSS</a>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('#mobile-menu');
+  const openButton = document.querySelector<HTMLButtonElement>('.menu-button');
+  const closeButton = dialog?.querySelector<HTMLButtonElement>('.menu-close');
+
+  function closeMenu() {
+    if (!dialog?.open) return;
+    dialog.close();
+  }
+
+  openButton?.addEventListener('click', () => {
+    dialog?.showModal();
+    openButton.setAttribute('aria-expanded', 'true');
+    closeButton?.focus();
+  });
+  closeButton?.addEventListener('click', closeMenu);
+  dialog?.addEventListener('click', (event) => {
+    if (event.target === dialog) closeMenu();
+  });
+  dialog?.addEventListener('close', () => {
+    openButton?.setAttribute('aria-expanded', 'false');
+    openButton?.focus();
+  });
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    z-index: 70;
+    top: 0;
+    height: var(--header-height);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    background: color-mix(in srgb, var(--bg) 91%, transparent);
+    backdrop-filter: blur(16px);
+  }
+
+  .header-shell {
+    display: grid;
+    width: min(calc(100% - 40px), var(--shell));
+    height: 100%;
+    margin-inline: auto;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .brand {
+    display: inline-flex;
+    width: max-content;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    text-decoration: none;
+  }
+
+  .brand:hover {
+    color: var(--text);
+  }
+
+  .brand-mark {
+    position: relative;
+    width: 17px;
+    height: 17px;
+    border: 1px solid var(--accent);
+    border-radius: 50% 45% 52% 38%;
+    background: var(--accent);
+    box-shadow: inset 4px -4px 0 color-mix(in srgb, var(--accent-strong) 76%, #000), 0 0 14px color-mix(in srgb, var(--accent) 42%, transparent);
+    transform: rotate(18deg);
+  }
+
+  .brand-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .brand-cn {
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+  }
+
+  .desktop-nav {
+    display: flex;
+    align-items: stretch;
+    align-self: stretch;
+  }
+
+  .desktop-nav a {
+    position: relative;
+    display: flex;
+    min-width: 70px;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 16px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .desktop-nav a::after {
+    position: absolute;
+    right: 16px;
+    bottom: -1px;
+    left: 16px;
+    height: 2px;
+    background: var(--accent);
+    content: "";
+    opacity: 0;
+  }
+
+  .desktop-nav a:hover,
+  .desktop-nav a[aria-current="page"] {
+    color: var(--text);
+  }
+
+  .desktop-nav a[aria-current="page"]::after {
+    opacity: 1;
+  }
+
+  .header-actions {
+    display: flex;
+    justify-self: end;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .language-button {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-soft);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .language-button:hover {
+    color: var(--accent);
+  }
+
+  .theme-icon--moon {
+    display: none;
+  }
+
+  :global(:root[data-theme="dark"]) .theme-icon--sun {
+    display: none;
+  }
+
+  :global(:root[data-theme="dark"]) .theme-icon--moon {
+    display: block;
+  }
+
+  .menu-button {
+    display: none;
+  }
+
+  .mobile-menu {
+    width: min(360px, calc(100% - 24px));
+    max-width: none;
+    height: calc(100dvh - 24px);
+    max-height: none;
+    margin: 12px 12px 12px auto;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-md);
+  }
+
+  .mobile-menu::backdrop {
+    background: rgb(0 0 0 / 55%);
+    backdrop-filter: blur(3px);
+  }
+
+  .mobile-menu-head,
+  .mobile-menu-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-menu-head .mono {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+  }
+
+  .mobile-menu-nav {
+    display: grid;
+    padding: 18px 16px;
+  }
+
+  .mobile-menu-nav a {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-serif);
+    font-size: 1.35rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .mobile-menu-nav a[aria-current="page"] {
+    color: var(--accent);
+  }
+
+  .mobile-menu-foot {
+    justify-content: flex-start;
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+  }
+
+  @media (max-width: 760px) {
+    .header-shell {
+      width: min(calc(100% - 28px), var(--shell));
+      grid-template-columns: 1fr auto;
+    }
+
+    .desktop-nav,
+    .search-button {
+      display: none;
+    }
+
+    .menu-button {
+      display: inline-grid;
+    }
+
+    .brand-cn {
+      display: none;
+    }
+
+    .header-actions > .language-button {
+      display: none;
+    }
+  }
+</style>

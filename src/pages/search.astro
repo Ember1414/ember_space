@@ -1,96 +1,17 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import SearchPage from '../components/SearchPage.astro';
 import { t, type Lang } from '../i18n/ui';
 
 const lang: Lang = 'zh';
-const msgs = {
-  loading: t(lang, 'search.loading'),
-  ready: t(lang, 'search.ready'),
-  unavailable: t(lang, 'search.unavailable'),
-  typeDefault: t(lang, 'search.typeDefault'),
-};
 ---
 
-<BaseLayout lang={lang} title={t(lang, 'nav.search')} description="站内全文搜索">
-  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> grep -rn "" .</h1>
-  <p class="page-sub anim" style="animation-delay: 0.08s;">{t(lang, 'search.subtitle')}</p>
-
-  <div class="search-box anim" style="animation-delay: 0.15s;">
-    <input
-      type="search"
-      id="search-input"
-      placeholder={t(lang, 'search.placeholder')}
-      autocomplete="off"
-      autofocus
-      aria-label="Search"
-    />
-  </div>
-
-  <div class="search-results">
-    <p class="search-hint" id="search-status">{t(lang, 'search.loading')}</p>
-    <div id="search-output"></div>
-  </div>
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'nav.search')}
+  description="站内全文搜索"
+  canonicalPath="/search/"
+  alternatePath="/en/search/"
+>
+  <SearchPage lang={lang} />
 </BaseLayout>
-
-{/* is:inline：脚本原样输出，避免 Vite 在构建时转换对 /pagefind/pagefind.js 的动态导入（索引在构建后才生成） */}
-<script is:inline define:vars={{ msgs, lang }}>
-  (function () {
-    var input = document.getElementById('search-input');
-    var status = document.getElementById('search-status');
-    var output = document.getElementById('search-output');
-    var pagefind = null;
-    var debounce;
-
-    function init() {
-      var pfUrl = new URL('/pagefind/pagefind.js', window.location.origin).href;
-      import(pfUrl)
-        .then(function (m) {
-          pagefind = m;
-          return pagefind.options({ excerptLength: 24 });
-        })
-        .then(function () {
-          status.textContent = msgs.ready;
-        })
-        .catch(function () {
-          status.textContent = msgs.unavailable;
-        });
-    }
-    init();
-
-    input.addEventListener('input', function () {
-      clearTimeout(debounce);
-      debounce = setTimeout(run, 150);
-    });
-
-    function run() {
-      if (!pagefind) return;
-      var q = input.value.trim();
-      output.innerHTML = '';
-
-      if (!q) {
-        status.textContent = msgs.ready;
-        return;
-      }
-
-      pagefind.search(q).then(function (res) {
-        status.textContent =
-          res.results.length === 0 ? msgs.noResult(q) : msgs.found(res.results.length);
-
-        Promise.all(res.results.slice(0, 20).map(function (r) { return r.data(); })).then(function (items) {
-          for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            var div = document.createElement('div');
-            div.className = 'search-result-item';
-            var title = (item.meta && item.meta.title) || item.url;
-            var type = (item.meta && item.meta.type) || msgs.typeDefault;
-            div.innerHTML =
-              '<div class="post-item-meta" style="margin-bottom: 0.25rem;"><span class="tag">' + type + '</span></div>' +
-              '<a href="' + item.url + '">' + title + '</a>' +
-              '<div class="snippet">' + item.excerpt + '</div>';
-            output.appendChild(div);
-          }
-        });
-      });
-    }
-  })();
-</script>

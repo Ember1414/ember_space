@@ -1,0 +1,710 @@
+---
+import { Search } from 'lucide-astro';
+import { t, tf, type Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const isZh = lang === 'zh';
+const postsHref = isZh ? '/posts/' : '/en/posts/';
+const projectsHref = isZh ? '/projects/' : '/en/projects/';
+const inputId = `site-search-${lang}`;
+const scopeName = `search-scope-${lang}`;
+
+const labels = isZh
+  ? {
+      eyebrow: 'SEARCH / 全站索引',
+      title: '搜索',
+      input: '搜索文章与项目',
+      submit: '搜索',
+      scope: '搜索范围',
+      all: '全部',
+      posts: '文章',
+      projects: '项目',
+      searching: '正在搜索「{query}」…',
+      errorHelp: '你也可以直接浏览文章或项目。',
+      results: '搜索结果',
+      noScript: '搜索需要 JavaScript。你仍可直接浏览文章或项目。',
+    }
+  : {
+      eyebrow: 'SEARCH / SITE INDEX',
+      title: 'Search',
+      input: 'Search posts and projects',
+      submit: 'Search',
+      scope: 'Search in',
+      all: 'All',
+      posts: 'Posts',
+      projects: 'Projects',
+      searching: 'Searching for “{query}”…',
+      errorHelp: 'You can still browse posts or projects directly.',
+      results: 'Search results',
+      noScript: 'Search requires JavaScript. You can still browse posts or projects directly.',
+    };
+
+// Parameterized translations are materialized here so the inline client script only receives data.
+const messages = {
+  loading: t(lang, 'search.loading'),
+  ready: t(lang, 'search.ready'),
+  unavailable: t(lang, 'search.unavailable'),
+  typeDefault: t(lang, 'search.typeDefault'),
+  found: tf(lang, 'search.found', '{count}'),
+  noResult: tf(lang, 'search.noResult', '{query}'),
+  searching: labels.searching,
+  resultPosts: labels.posts,
+  resultProjects: labels.projects,
+};
+---
+
+<section class="search-page" data-search-page data-lang={lang}>
+  <header class="search-heading">
+    <p class="search-eyebrow">{labels.eyebrow}</p>
+    <h1>{labels.title}</h1>
+    <p>{t(lang, 'search.subtitle')}</p>
+  </header>
+
+  <form class="search-form" role="search" method="get">
+    <label class="search-label" for={inputId}>{labels.input}</label>
+    <div class="search-input-row">
+      <span class="search-input-icon" aria-hidden="true"><Search size={20} stroke-width={1.8} /></span>
+      <input
+        type="search"
+        id={inputId}
+        name="q"
+        placeholder={t(lang, 'search.placeholder')}
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button type="submit">
+        <Search size={18} stroke-width={1.8} aria-hidden="true" />
+        <span>{labels.submit}</span>
+      </button>
+    </div>
+
+    <fieldset class="search-scope">
+      <legend>{labels.scope}</legend>
+      <div class="search-segments">
+        <label>
+          <input type="radio" name={scopeName} value="all" checked />
+          <span>{labels.all}</span>
+        </label>
+        <label>
+          <input type="radio" name={scopeName} value="posts" />
+          <span>{labels.posts}</span>
+        </label>
+        <label>
+          <input type="radio" name={scopeName} value="projects" />
+          <span>{labels.projects}</span>
+        </label>
+      </div>
+    </fieldset>
+  </form>
+
+  <div class="search-results" aria-busy="true">
+    <p class="search-status" role="status" aria-live="polite" aria-atomic="true">
+      {t(lang, 'search.loading')}
+    </p>
+    <p class="search-error-help" hidden>
+      {labels.errorHelp}
+      <a href={postsHref}>{labels.posts}</a>
+      <span aria-hidden="true">/</span>
+      <a href={projectsHref}>{labels.projects}</a>
+    </p>
+    <ol class="search-output" aria-label={labels.results}></ol>
+  </div>
+
+  <noscript>
+    <p class="search-noscript">
+      {labels.noScript}
+      <a href={postsHref}>{labels.posts}</a>
+      <span aria-hidden="true">/</span>
+      <a href={projectsHref}>{labels.projects}</a>
+    </p>
+  </noscript>
+</section>
+
+<script is:inline define:vars={{ messages, lang, scopeName }}>
+  (function () {
+    var root = document.querySelector('[data-search-page][data-lang="' + lang + '"]');
+    if (!root) return;
+
+    var form = root.querySelector('.search-form');
+    var input = root.querySelector('input[type="search"]');
+    var status = root.querySelector('.search-status');
+    var results = root.querySelector('.search-results');
+    var output = root.querySelector('.search-output');
+    var errorHelp = root.querySelector('.search-error-help');
+    var pagefind = null;
+    var availableFilters = {};
+    var debounce;
+    var searchSequence = 0;
+    var initFailed = false;
+
+    if (!form || !input || !status || !results || !output || !errorHelp) return;
+
+    function format(template, key, value) {
+      return String(template).split('{' + key + '}').join(String(value));
+    }
+
+    function currentScope() {
+      var selected = root.querySelector('input[name="' + scopeName + '"]:checked');
+      return selected ? selected.value : 'all';
+    }
+
+    function setBusy(busy) {
+      results.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+
+    function setUnavailable() {
+      initFailed = true;
+      pagefind = null;
+      searchSequence += 1;
+      output.replaceChildren();
+      status.textContent = messages.unavailable;
+      errorHelp.hidden = false;
+      setBusy(false);
+    }
+
+    function normalize(value) {
+      return String(value || '').trim().toLocaleLowerCase().replace(/[\s_-]+/g, '');
+    }
+
+    function findFilterKey(candidates) {
+      var keys = Object.keys(availableFilters || {});
+      for (var i = 0; i < candidates.length; i += 1) {
+        var wanted = normalize(candidates[i]);
+        var found = keys.find(function (key) { return normalize(key) === wanted; });
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function findFilterValue(key, candidates) {
+      if (!key || !availableFilters[key] || typeof availableFilters[key] !== 'object') return null;
+      var values = Object.keys(availableFilters[key]);
+      for (var i = 0; i < candidates.length; i += 1) {
+        var wanted = normalize(candidates[i]);
+        var found = values.find(function (value) { return normalize(value) === wanted; });
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function searchOptions(scope) {
+      var filters = {};
+      var languageKey = findFilterKey(['lang', 'language']);
+      var languageValue = findFilterValue(
+        languageKey,
+        lang === 'zh' ? ['zh', 'zh-CN', 'zh_cn', '中文', 'Chinese'] : ['en', 'en-US', 'en_us', 'English']
+      );
+      if (languageKey && languageValue) filters[languageKey] = languageValue;
+
+      if (scope !== 'all') {
+        var typeKey = findFilterKey(['type', 'contentType', 'kind']);
+        var typeValue = findFilterValue(
+          typeKey,
+          scope === 'posts'
+            ? ['post', 'posts', 'article', 'articles', '文章', '博客']
+            : ['project', 'projects', 'case-study', 'case studies', '项目', '项目案例']
+        );
+        if (typeKey && typeValue) filters[typeKey] = typeValue;
+      }
+
+      return Object.keys(filters).length > 0 ? { filters: filters } : {};
+    }
+
+    function itemPath(item) {
+      try {
+        return new URL(item.url, window.location.origin).pathname;
+      } catch (_error) {
+        return '';
+      }
+    }
+
+    function itemLanguage(item) {
+      var metaLanguage = item.meta && (item.meta.lang || item.meta.language);
+      if (metaLanguage) {
+        var value = normalize(metaLanguage);
+        if (value === 'zh' || value.indexOf('zhcn') === 0 || value === '中文' || value === 'chinese') return 'zh';
+        if (value === 'en' || value.indexOf('enus') === 0 || value === 'english') return 'en';
+      }
+      return itemPath(item).indexOf('/en/') === 0 ? 'en' : 'zh';
+    }
+
+    function itemType(item) {
+      var rawType = item.meta && item.meta.type;
+      var type = normalize(rawType);
+      if (['post', 'posts', 'article', 'articles', '文章', '博客'].indexOf(type) !== -1) return 'posts';
+      if (['project', 'projects', 'casestudy', 'casestudies', '项目', '项目案例'].indexOf(type) !== -1) return 'projects';
+
+      var path = itemPath(item);
+      if (/\/(?:en\/)?posts\//.test(path)) return 'posts';
+      if (/\/(?:en\/)?projects\//.test(path)) return 'projects';
+      return 'other';
+    }
+
+    function belongsToScope(item, scope) {
+      return itemLanguage(item) === lang && (scope === 'all' || itemType(item) === scope);
+    }
+
+    function safeUrl(rawUrl) {
+      try {
+        var parsed = new URL(rawUrl, window.location.origin);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    function decodeEntities(text) {
+      var named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
+      return String(text).replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, function (match, entity) {
+        var lower = entity.toLocaleLowerCase();
+        if (lower.charAt(0) !== '#') return named[lower] || match;
+        var isHex = lower.charAt(1) === 'x';
+        var code = parseInt(lower.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+        if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return match;
+        try { return String.fromCodePoint(code); } catch (_error) { return match; }
+      });
+    }
+
+    // Pagefind emits only <mark> around matches. Every other character remains a text node.
+    function appendExcerpt(container, excerpt) {
+      var parts = String(excerpt || '').split(/(<\/?mark>)/gi);
+      var target = container;
+      for (var i = 0; i < parts.length; i += 1) {
+        var part = parts[i];
+        if (/^<mark>$/i.test(part)) {
+          var mark = document.createElement('mark');
+          container.appendChild(mark);
+          target = mark;
+        } else if (/^<\/mark>$/i.test(part)) {
+          target = container;
+        } else if (part) {
+          target.appendChild(document.createTextNode(decodeEntities(part)));
+        }
+      }
+    }
+
+    function renderItem(item) {
+      var url = safeUrl(item.url);
+      if (!url) return null;
+
+      var type = itemType(item);
+      var listItem = document.createElement('li');
+      listItem.className = 'search-result-item';
+
+      var typeLabel = document.createElement('span');
+      typeLabel.className = 'search-result-type';
+      typeLabel.textContent = type === 'posts'
+        ? messages.resultPosts
+        : type === 'projects'
+          ? messages.resultProjects
+          : ((item.meta && item.meta.type) || messages.typeDefault);
+
+      var heading = document.createElement('h2');
+      var link = document.createElement('a');
+      link.href = url;
+      link.textContent = (item.meta && item.meta.title) || item.url;
+      heading.appendChild(link);
+
+      var excerpt = document.createElement('p');
+      excerpt.className = 'search-result-excerpt';
+      appendExcerpt(excerpt, item.excerpt || item.content || '');
+
+      listItem.append(typeLabel, heading, excerpt);
+      return listItem;
+    }
+
+    function syncUrl(query, scope) {
+      try {
+        var url = new URL(window.location.href);
+        if (query) url.searchParams.set('q', query);
+        else url.searchParams.delete('q');
+        if (scope !== 'all') url.searchParams.set('scope', scope);
+        else url.searchParams.delete('scope');
+        window.history.replaceState({}, '', url);
+      } catch (_error) {}
+    }
+
+    async function run() {
+      var sequence = ++searchSequence;
+      var query = input.value.trim();
+      var scope = currentScope();
+      syncUrl(query, scope);
+      output.replaceChildren();
+      errorHelp.hidden = true;
+
+      if (!query) {
+        status.textContent = pagefind ? messages.ready : messages.loading;
+        setBusy(!pagefind && !initFailed);
+        return;
+      }
+      if (!pagefind) {
+        status.textContent = initFailed ? messages.unavailable : messages.loading;
+        errorHelp.hidden = !initFailed;
+        return;
+      }
+
+      status.textContent = format(messages.searching, 'query', query);
+      setBusy(true);
+
+      try {
+        var response = await pagefind.search(query, searchOptions(scope));
+        if (sequence !== searchSequence) return;
+        var loaded = await Promise.allSettled(response.results.map(function (result) { return result.data(); }));
+        if (sequence !== searchSequence) return;
+
+        var items = loaded
+          .filter(function (entry) { return entry.status === 'fulfilled'; })
+          .map(function (entry) { return entry.value; })
+          .filter(function (item) { return belongsToScope(item, scope); });
+
+        status.textContent = items.length === 0
+          ? format(messages.noResult, 'query', query)
+          : format(messages.found, 'count', items.length);
+
+        var fragment = document.createDocumentFragment();
+        items.slice(0, 20).forEach(function (item) {
+          var rendered = renderItem(item);
+          if (rendered) fragment.appendChild(rendered);
+        });
+        output.appendChild(fragment);
+        setBusy(false);
+      } catch (_error) {
+        if (sequence === searchSequence) setUnavailable();
+      }
+    }
+
+    function initializeFromUrl() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (!input.value && params.get('q')) input.value = params.get('q');
+        var requestedScope = params.get('scope');
+        if (requestedScope === 'posts' || requestedScope === 'projects') {
+          var selected = root.querySelector('input[name="' + scopeName + '"][value="' + requestedScope + '"]');
+          if (selected) selected.checked = true;
+        }
+      } catch (_error) {}
+    }
+
+    function init() {
+      initializeFromUrl();
+      var pagefindUrl = new URL('/pagefind/pagefind.js', window.location.origin).href;
+      import(pagefindUrl)
+        .then(async function (module) {
+          pagefind = module;
+          await pagefind.options({ excerptLength: 30 });
+          if (typeof pagefind.init === 'function') await pagefind.init();
+          if (typeof pagefind.filters === 'function') {
+            try { availableFilters = (await pagefind.filters()) || {}; } catch (_error) { availableFilters = {}; }
+          }
+          status.textContent = messages.ready;
+          setBusy(false);
+          run();
+        })
+        .catch(setUnavailable);
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      clearTimeout(debounce);
+      run();
+    });
+
+    input.addEventListener('input', function () {
+      clearTimeout(debounce);
+      debounce = setTimeout(run, 180);
+    });
+
+    root.querySelectorAll('input[name="' + scopeName + '"]').forEach(function (control) {
+      control.addEventListener('change', run);
+    });
+
+    init();
+  })();
+</script>
+
+<style>
+  .search-page {
+    width: min(100%, 900px);
+    margin-inline: auto;
+  }
+
+  .search-heading {
+    max-width: 680px;
+    margin-bottom: 2rem;
+  }
+
+  .search-eyebrow {
+    margin: 0 0 0.5rem;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .search-heading h1 {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font-serif);
+    font-size: 2.25rem;
+    line-height: 1.2;
+  }
+
+  .search-heading > p:last-child {
+    margin: 0.75rem 0 0;
+    color: var(--text-muted);
+  }
+
+  .search-form {
+    padding: 1.25rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .search-label,
+  .search-scope legend {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  .search-input-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 50px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--bg);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .search-input-row:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .search-input-icon {
+    display: grid;
+    place-items: center;
+    margin-left: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .search-input-row input {
+    min-width: 0;
+    min-height: 48px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .search-input-row button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 44px;
+    margin-right: 3px;
+    padding: 0.55rem 0.9rem;
+    border: 0;
+    border-radius: 5px;
+    background: var(--accent);
+    color: var(--bg);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .search-input-row button:hover {
+    filter: brightness(1.08);
+  }
+
+  .search-input-row button:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+
+  .search-scope {
+    min-width: 0;
+    margin: 1rem 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .search-segments {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(100%, 420px);
+    min-height: 44px;
+    padding: 3px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--surface-soft);
+  }
+
+  .search-segments label {
+    position: relative;
+    min-width: 0;
+    cursor: pointer;
+  }
+
+  .search-segments input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .search-segments span {
+    display: grid;
+    place-items: center;
+    min-height: 36px;
+    padding: 0.35rem 0.55rem;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .search-segments input:checked + span {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 5px rgb(0 0 0 / 18%);
+  }
+
+  .search-segments input:focus-visible + span {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .search-results {
+    min-height: 11rem;
+    margin-top: 1.5rem;
+  }
+
+  .search-status,
+  .search-error-help,
+  .search-noscript {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .search-error-help a,
+  .search-noscript a {
+    margin-inline: 0.25rem;
+  }
+
+  .search-output {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .search-page :global(.search-result-item) {
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-page :global(.search-result-type) {
+    display: inline-block;
+    margin-bottom: 0.45rem;
+    padding: 0.12rem 0.45rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+
+  .search-page :global(.search-result-item h2) {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    line-height: 1.45;
+  }
+
+  .search-page :global(.search-result-item h2 a) {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .search-page :global(.search-result-item h2 a:hover) {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .search-page :global(.search-result-item h2 a:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .search-page :global(.search-result-excerpt) {
+    max-width: 72ch;
+    margin: 0.45rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .search-page :global(.search-result-excerpt mark) {
+    border-radius: 2px;
+    background: var(--accent-soft);
+    color: var(--text);
+    padding-inline: 0.1rem;
+  }
+
+  @media (max-width: 560px) {
+    .search-heading h1 {
+      font-size: 1.85rem;
+    }
+
+    .search-form {
+      padding: 1rem;
+    }
+
+    .search-input-row {
+      grid-template-columns: 20px minmax(0, 1fr) 44px;
+    }
+
+    .search-input-row button {
+      width: 40px;
+      padding-inline: 0;
+    }
+
+    .search-input-row button span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .search-segments span {
+      padding-inline: 0.25rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .search-input-row {
+      transition: none;
+    }
+  }
+</style>

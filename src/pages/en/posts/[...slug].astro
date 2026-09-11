@@ -1,17 +1,47 @@
 ---
 import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostPage from '../../../templates/PostPage.astro';
 
-export async function getStaticPaths() {
-  // 英文版覆盖所有文章；暂无英文翻译的内容会显示中文原文（页面顶部有提示条）
-  const posts = await getCollection('posts', ({ data }) => !data.draft);
-  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+interface Props {
+  post: CollectionEntry<'posts'>;
+  alternatePath: string | null;
 }
 
-const { post } = Astro.props;
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  return posts
+    .filter(({ data }) => data.lang === 'en')
+    .map((post) => {
+      const counterpart = post.data.translationKey
+        ? posts.find(({ data }) => data.lang === 'zh' && data.translationKey === post.data.translationKey)
+        : undefined;
+
+      return {
+        params: { slug: post.id },
+        props: {
+          post,
+          alternatePath: counterpart ? `/posts/${counterpart.id}/` : null,
+        },
+      };
+    });
+}
+
+const { post, alternatePath } = Astro.props as Props;
+const canonicalPath = `/en/posts/${post.id}/`;
 ---
 
-<BaseLayout lang="en" title={post.data.title} description={post.data.description}>
+<BaseLayout
+  lang="en"
+  title={post.data.title}
+  description={post.data.description}
+  canonicalPath={canonicalPath}
+  alternatePath={alternatePath}
+  image={post.data.cover?.src}
+  pageType="article"
+  publishedDate={post.data.pubDate}
+  updatedDate={post.data.updatedDate}
+>
   <PostPage lang="en" post={post} />
 </BaseLayout>

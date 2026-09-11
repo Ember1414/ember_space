@@ -1,0 +1,46 @@
+---
+import { getCollection } from 'astro:content';
+import { ArrowLeft, Tags } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t, tf, type Lang } from '../i18n/ui';
+import PostCard from './PostCard.astro';
+
+interface Props { lang: Lang; tag: string; }
+
+const { lang, tag } = Astro.props;
+const isZh = lang === 'zh';
+const base = isZh ? '' : '/en';
+const otherLang: Lang = isZh ? 'en' : 'zh';
+const posts = (await getCollection('posts', ({ data }) => !data.draft && data.lang === lang && data.tags.includes(tag)))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const alternateExists = (await getCollection('posts', ({ data }) => !data.draft && data.lang === otherLang && data.tags.includes(tag))).length > 0;
+const encodedTag = encodeURIComponent(tag);
+const title = tf(lang, 'tag.title', tag);
+const labels = isZh ? { eyebrow: 'TOPIC / 主题归档', empty: '当前主题还没有已发布文章。' } : { eyebrow: 'TOPIC / ARCHIVE', empty: 'No published English post uses this topic yet.' };
+---
+
+<BaseLayout
+  lang={lang}
+  title={title}
+  description={`${title} · ${tf(lang, 'tag.count', posts.length)}`}
+  canonicalPath={`${base}/tags/${encodedTag}/`}
+  alternatePath={alternateExists ? `${isZh ? '/en' : ''}/tags/${encodedTag}/` : null}
+>
+  <div class="tag-page" data-pagefind-body data-pagefind-filter={`lang:${lang}`} data-pagefind-meta={`lang:${lang}`}>
+    <div data-pagefind-filter="type:posts" data-pagefind-meta="type:posts">
+      <header class="page-intro anim">
+        <p class="eyebrow"><Tags size={15} aria-hidden="true" /> {labels.eyebrow}</p>
+        <h1 class="page-title">{title}</h1>
+        <p class="page-sub">{tf(lang, 'tag.count', posts.length)}</p>
+      </header>
+      {posts.length > 0 ? <ol class="post-list anim">{posts.map((post) => <PostCard post={post} lang={lang} headingLevel={2} />)}</ol> : <div class="empty-state anim"><h2>{title}</h2><p>{labels.empty}</p></div>}
+      <a class="back-link" href={`${base}/posts/`}><ArrowLeft size={17} aria-hidden="true" />{t(lang, 'tag.back')}</a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .tag-page { width: min(100%, 980px); margin-inline: auto; }
+  .page-intro .eyebrow { display: flex; align-items: center; gap: 7px; }
+  .back-link { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; margin-top: 36px; font-weight: 700; }
+</style>

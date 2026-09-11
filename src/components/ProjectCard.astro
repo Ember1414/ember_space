@@ -1,24 +1,116 @@
 ---
+import { Image } from 'astro:assets';
+import { ArrowRight, ArrowUpRight, Github } from 'lucide-astro';
 import type { CollectionEntry } from 'astro:content';
+import { t, type Lang } from '../i18n/ui';
 
 interface Props {
   project: CollectionEntry<'projects'>;
+  lang?: Lang;
 }
 
-const { project } = Astro.props;
-const d = project.data;
+const { project, lang = 'zh' } = Astro.props;
+const data = project.data;
+const base = lang === 'en' ? '/en' : '';
+const detailHref = `${base}/projects/${project.id}/`;
 ---
 
-<article class="card">
-  <h3>
-    <a href={d.url ?? d.repo ?? '#'} target={d.url?.startsWith('http') ? '_blank' : undefined} rel="noopener">
-      {d.icon} {d.name}
-    </a>
-  </h3>
-  <p>{d.description}</p>
-  <div class="post-item-meta card-links">
-    <span>{d.year}</span>
-    {d.tags.map((t) => <span class="tag">#{t}</span>)}
-    {d.repo && <a href={d.repo} target="_blank" rel="noopener">源码 ↗</a>}
+<article class="card project-card">
+  {data.image ? (
+    <div class="card-media">
+      <Image src={data.image} alt={data.imageAlt ?? ''} widths={[480, 760]} sizes="(max-width: 760px) 100vw, 50vw" loading="lazy" />
+    </div>
+  ) : (
+    <div class="card-media project-fallback" aria-hidden="true">
+      <span class="mono">{String(data.year).slice(-2)}</span>
+      <span>{data.tags[0] ?? 'BUILD'}</span>
+    </div>
+  )}
+  <div class="card-body">
+    <div class="project-kicker">
+      <span>{data.status ?? data.year}</span>
+      {data.role && <span>{data.role}</span>}
+    </div>
+    <h3><a href={detailHref}>{data.name}</a></h3>
+    <p>{data.description}</p>
+    {data.highlights.length > 0 && (
+      <ul class="highlights">
+        {data.highlights.slice(0, 3).map((highlight) => <li>{highlight}</li>)}
+      </ul>
+    )}
+    <ul class="tag-list">
+      {data.tags.map((tag) => <li><span class="tag">{tag}</span></li>)}
+    </ul>
+    <div class="project-links">
+      <a href={detailHref}>{t(lang, 'projects.caseStudy')} <ArrowRight size={15} aria-hidden="true" /></a>
+      {data.url && <a href={data.url} target="_blank" rel="noopener">{t(lang, 'projects.visit')} <ArrowUpRight size={15} aria-hidden="true" /></a>}
+      {data.repo && <a href={data.repo} target="_blank" rel="noopener"><Github size={15} aria-hidden="true" /> {t(lang, 'projects.source')}</a>}
+    </div>
   </div>
 </article>
+
+<style>
+  .project-fallback {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 24px;
+    background:
+      linear-gradient(90deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%),
+      linear-gradient(0deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%),
+      var(--surface-soft);
+    background-size: 42px 42px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .project-fallback .mono {
+    color: var(--accent);
+    font-size: 3.4rem;
+    font-weight: 700;
+    line-height: 0.85;
+  }
+
+  .project-kicker {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+
+  .highlights {
+    margin: 0 0 18px;
+    padding-left: 1.2rem;
+    color: var(--text-soft);
+    font-size: 0.88rem;
+  }
+
+  .highlights li + li {
+    margin-top: 0.35rem;
+  }
+
+  .highlights li::marker {
+    color: var(--accent);
+  }
+
+  .project-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .project-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+</style>

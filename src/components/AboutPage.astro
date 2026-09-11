@@ -1,0 +1,89 @@
+---
+import { getCollection, render } from 'astro:content';
+import { Code2, Github, Mail, MapPin, MessageSquare, Rss } from 'lucide-astro';
+import { SITE } from '../consts';
+import { t, type Lang } from '../i18n/ui';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+interface Props { lang: Lang; }
+
+const { lang } = Astro.props;
+const isZh = lang === 'zh';
+const base = isZh ? '' : '/en';
+const aboutEntry = (await getCollection('about', ({ data }) => data.lang === lang))[0];
+const Content = aboutEntry ? (await render(aboutEntry)).Content : null;
+
+const labels = isZh
+  ? { profile: '个人简介', focus: '关注方向', contact: '保持联系', emptyTitle: '简介正在整理中', emptyText: '当前语言的简介尚未发布。', rss: '通过 RSS 订阅' }
+  : { profile: 'Profile', focus: 'Current focus', contact: 'Connect', emptyTitle: 'No English profile yet', emptyText: 'An English profile will appear here when it is ready.', rss: 'Subscribe via RSS' };
+---
+
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'nav.about')}
+  description={t(lang, 'about.title')}
+  canonicalPath={`${base}/about/`}
+  alternatePath={isZh ? '/en/about/' : '/about/'}
+>
+  <div class="about-page" data-pagefind-body data-pagefind-filter={`lang:${lang}`} data-pagefind-meta={`lang:${lang}`}>
+    <div data-pagefind-filter="type:pages" data-pagefind-meta="type:pages">
+      <header class="page-intro about-intro anim">
+        <p class="eyebrow">{t(lang, 'about.eyebrow')}</p>
+        <h1 class="page-title">{t(lang, 'about.title')}</h1>
+      </header>
+
+      <div class="about-layout">
+        <div class="about-main anim">
+          <section aria-labelledby={`about-profile-${lang}`}>
+            <h2 class="section-title" id={`about-profile-${lang}`}>{labels.profile}</h2>
+            {Content ? <div class="prose about-prose"><Content /></div> : <div class="empty-state"><h3>{labels.emptyTitle}</h3><p>{labels.emptyText}</p></div>}
+          </section>
+
+          <section class="site-notes" aria-labelledby={`about-site-${lang}`}>
+            <h2 class="section-title" id={`about-site-${lang}`}>{t(lang, 'about.site')}</h2>
+            <ul>
+              <li><Code2 size={19} aria-hidden="true" /><span>{t(lang, 'about.builtWith')}</span></li>
+              <li><MapPin size={19} aria-hidden="true" /><span>{t(lang, 'about.theme')}</span></li>
+              <li><MessageSquare size={19} aria-hidden="true" /><span>{t(lang, 'about.comments')}</span></li>
+              <li><Github size={19} aria-hidden="true" /><span>{t(lang, 'about.opensource')}</span></li>
+            </ul>
+          </section>
+        </div>
+
+        <aside class="about-aside anim" aria-labelledby={`about-focus-${lang}`}>
+          <h2 class="aside-title" id={`about-focus-${lang}`}>{labels.focus}</h2>
+          <dl class="about-facts">
+            <div><dt>{t(lang, 'about.status')}</dt><dd>{t(lang, 'about.statusValue')}</dd></div>
+            <div><dt>{t(lang, 'about.stack')}</dt><dd>{t(lang, 'about.stackValue')}</dd></div>
+            <div><dt>{t(lang, 'about.location')}</dt><dd>{t(lang, 'about.locationValue')}</dd></div>
+          </dl>
+
+          <nav class="contact-links" aria-label={labels.contact}>
+            <p class="contact-title">{labels.contact}</p>
+            <a href={SITE.social.email}><Mail size={18} aria-hidden="true" /><span>{SITE.social.email.replace('mailto:', '')}</span></a>
+            <a href={SITE.social.github} target="_blank" rel="noopener"><Github size={18} aria-hidden="true" /><span>GitHub</span></a>
+            <a href="/rss.xml"><Rss size={18} aria-hidden="true" /><span>{labels.rss}</span></a>
+          </nav>
+        </aside>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .about-page { width: min(100%, 1040px); margin-inline: auto; }
+  .about-intro { max-width: 820px; margin-bottom: 56px; }
+  .section-title, .aside-title { margin: 0 0 22px; font-size: 1.45rem; }
+  .about-prose { font-size: 1.08rem; }
+  .site-notes { margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--border); }
+  .site-notes ul { display: grid; margin: 0; padding: 0; list-style: none; gap: 0; }
+  .site-notes li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding-block: 15px; border-bottom: 1px solid var(--border); color: var(--text-soft); }
+  .site-notes li :global(svg) { margin-top: 0.22rem; color: var(--accent); }
+  .aside-title { font-family: var(--font-mono); font-size: 0.86rem; text-transform: uppercase; }
+  .contact-links { display: grid; margin-top: 40px; gap: 6px; }
+  .contact-title { margin: 0 0 8px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; }
+  .contact-links a { display: flex; min-width: 0; min-height: 44px; align-items: center; gap: 10px; color: var(--text-soft); font-size: 0.9rem; font-weight: 700; text-decoration: none; }
+  .contact-links a span { min-width: 0; overflow-wrap: anywhere; }
+  .contact-links a:hover { color: var(--accent); }
+  @media (max-width: 760px) { .about-intro { margin-bottom: 44px; } .site-notes { margin-top: 52px; } }
+</style>

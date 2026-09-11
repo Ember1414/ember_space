@@ -1,24 +1,27 @@
 # Ember 余烬 — 个人博客
 
-一个部署在 Cloudflare Pages 上的暗色极客风个人博客，基于 [Astro](https://astro.build) 构建。
+一个部署在 Cloudflare Pages 上的中英双语个人博客，基于 [Astro](https://astro.build) 构建。界面采用“技术编辑部 + 视觉杂志”的风格，中文是默认语言。
 
 ## 功能
 
-- **博客文章**：Markdown 写作，支持标签分类、文章目录（TOC）、代码高亮（Shiki 双主题）、阅读时长估算
+- **博客文章**：Markdown 写作，支持精选内容、标签、按年归档、文章目录、阅读进度、标题锚点、代码复制与相关文章
 - **评论系统**：[giscus](https://giscus.app)（基于 GitHub Discussions），主题跟随站点切换
-- **项目展示**：卡片式作品集页面
-- **全文搜索**：[Pagefind](https://pagefind.app)，构建后生成索引，纯浏览器端搜索，支持中文
-- **RSS 订阅**：`/rss.xml`，配合 sitemap（`/sitemap-index.xml`）
-- **深浅主题**：默认暗色终端风，可一键切换亮色，跟随系统偏好，localStorage 持久化
-- **邮件订阅**：Cloudflare Pages Functions + KV 实现，页脚表单提交
+- **项目展示**：Markdown 驱动的精选案例与 GitHub 公开仓库列表
+- **全文搜索**：[Pagefind](https://pagefind.app) 构建本地索引，支持语言与内容类型筛选
+- **RSS 订阅**：`/rss.xml` 只发布中文文章，并生成 sitemap（`/sitemap-index.xml`）
+- **深浅主题**：初次访问跟随系统偏好，选择保存在 `localStorage`
+- **响应式与无障碍**：移动菜单、跳过导航、键盘焦点、动态状态播报和减少动画偏好
 
 ## 本地开发
 
 ```sh
 npm install
-npm run dev      # 开发服务器 http://localhost:4321（搜索与订阅 API 不可用）
+npx astro dev --background # 后台开发服务器，默认 http://localhost:4321
+npx astro dev status       # 查看后台服务器状态
+npx astro dev logs         # 查看开发日志
+npx astro dev stop         # 停止后台服务器
 npm run build    # 构建到 dist/ 并生成搜索索引
-npm run preview  # 本地预览构建产物（搜索可用，订阅 API 仅线上有效）
+npm run preview  # 本地预览构建产物（搜索可用）
 ```
 
 ## 修改关于页
@@ -33,9 +36,10 @@ npm run preview  # 本地预览构建产物（搜索可用，订阅 API 仅线�
 站点是完整双语结构：中文为默认语言（无前缀），英文挂在 `/en/` 前缀下（如 `/en/posts/…`）。
 
 - 界面文案字典：`src/i18n/ui.ts`（新增文案时在此补 `zh` / `en` 两个 key）
-- 导航栏有「中 / EN」按钮互切；新访客首次访问按浏览器语言自动跳转
-- 文章 frontmatter 支持 `lang: zh`（默认）/ `lang: en`；**写英文文章**：在 `src/content/posts/` 新建文件并写 `lang: en`，英文列表自动收录，中文列表只显示中文文章
-- 暂无英文版的文章，英文路由下显示中文原文并带提示条
+- 导航栏有「中 / EN」按钮互切；访问根路径始终进入中文站，不按浏览器语言跳转
+- 文章 frontmatter 支持 `lang: zh`（默认）或 `lang: en`；两个语言的列表、标签和搜索结果彼此独立
+- 互译文章使用相同的 `translationKey`。只有译文真实存在时，详情页才显示语言入口并输出对应 `hreflang`
+- 没有英文文章时，英文列表显示空状态和中文站入口，不把中文原文标记为英文内容
 - 关于页英文版：`src/content/about-en.md`
 
 ## 写文章
@@ -47,8 +51,15 @@ npm run preview  # 本地预览构建产物（搜索可用，订阅 API 仅线�
 title: 文章标题
 description: 一句话摘要（列表和 SEO 用）
 pubDate: 2026-09-01
+updatedDate: 2026-09-08 # 可选
 tags: [标签1, 标签2]
 draft: false # true 则不会发布
+lang: zh # zh 或 en
+featured: false
+series: Astro 实践 # 可选
+translationKey: astro-practice-01 # 可选，互译文章使用相同值
+cover: ../../assets/example-cover.webp # 可选，相对于当前 Markdown
+coverAlt: 封面内容说明 # 设置 cover 时必填
 ---
 
 正文从这里开始，标准 Markdown 语法。
@@ -56,7 +67,7 @@ draft: false # true 则不会发布
 
 ## 项目展示
 
-`/projects/` 页面和首页的项目卡片**自动展示 GitHub 公开仓库**（不含 fork），构建时从 GitHub API 拉取。
+`/projects/` 先展示本地维护的精选案例，再展示 GitHub 公开仓库（不含 fork）。首页也会选取两类内容中的代表项目。构建时会尝试从 GitHub API 更新仓库数据。
 
 你的本地网络可能无法访问 GitHub API，因此有缓存回退机制：
 
@@ -69,9 +80,32 @@ draft: false # true 则不会发布
 
 ### 精选项目（可选）
 
-如果想手动置顶展示某些项目（如无 GitHub 仓库的作品），在 `src/content/projects/` 下新建 Markdown 文件，frontmatter 格式：
-`name`、`icon`（emoji）、`description`、`url`（可选）、`repo`（可选）、`tags`、`year`、`order`（排序）。
-添加后会以「精选项目」区块显示在 GitHub 仓库列表上方。
+在 `src/content/projects/` 下新建 Markdown 文件：
+
+```md
+---
+name: 项目名称
+description: 项目解决的问题与核心价值
+url: https://example.com # 可选，演示或产品地址
+repo: https://github.com/user/repo # 可选
+tags: [Astro, TypeScript]
+year: 2026
+order: 1
+lang: zh # zh 或 en
+featured: true
+status: 持续更新 # 可选
+role: 设计与开发 # 可选
+highlights:
+  - 可核实的实现亮点
+  - 可核实的兼容性或功能范围
+image: ../../assets/project.webp # 可选
+imageAlt: 项目截图说明 # 设置 image 时必填
+---
+
+正文可以继续说明背景、取舍和实现方式。
+```
+
+项目亮点应来自仓库、演示或实际结果，不填写无法验证的指标。英文项目需要独立条目并设置 `lang: en`。
 
 ## 部署（GitHub Actions 全自动，已配置好）
 
@@ -90,14 +124,6 @@ npx wrangler pages deploy dist --project-name=ember-space --branch=main
 
 > 注意：不要在 Cloudflare Dashboard 再给这个项目连接 GitHub 仓库——同一 Pages 项目只能有一种部署来源，会冲突。
 
-### 邮件订阅（KV）
-
-`wrangler.toml` 已声明 `SUBSCRIBERS` KV 绑定，部署时自动生效。查看订阅者：
-
-```sh
-npx wrangler kv key list --namespace-id=0f643c099c2e4b6aa129eb7a363d5d64
-```
-
 ### 启用评论（giscus）
 
 1. 仓库需要是 **public**，并开启 **Settings → Discussions**
@@ -115,7 +141,6 @@ npx wrangler kv key list --namespace-id=0f643c099c2e4b6aa129eb7a363d5d64
 
 ```
 /
-├── functions/api/subscribe.ts   # Cloudflare Pages Function（订阅 API）
 ├── src/
 │   ├── consts.ts                # 站点配置（标题、社交、giscus）
 │   ├── content.config.ts        # 内容集合 schema

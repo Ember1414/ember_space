@@ -1,0 +1,30 @@
+---
+import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ProjectPage from '../../../templates/ProjectPage.astro';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+}
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects', ({ data }) => data.lang === 'en');
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props as Props;
+---
+
+<BaseLayout
+  lang="en"
+  title={project.data.name}
+  description={project.data.description}
+  canonicalPath={`/en/projects/${project.id}/`}
+  image={project.data.image?.src}
+>
+  <ProjectPage lang="en" project={project} />
+</BaseLayout>

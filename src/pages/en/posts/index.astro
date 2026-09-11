@@ -1,18 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import PostCard from '../../../components/PostCard.astro';
-import { t, tf, type Lang } from '../../../i18n/ui';
-
-const lang: Lang = 'en';
-const posts = (await getCollection('posts', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+import PostIndexPage from '../../../components/PostIndexPage.astro';
 ---
 
-<BaseLayout lang={lang} title={t(lang, 'nav.posts')}>
-  <h1 class="page-title anim"><span style="color: var(--accent-text);">$</span> ls ./posts</h1>
-  <p class="page-sub anim" style="animation-delay: 0.08s;">{tf(lang, 'posts.count', posts.length)}</p>
-  <div class="post-list">
-    {posts.map((post, i) => <PostCard post={post} lang={lang} num={i + 1} delay={Math.min(0.12 + i * 0.06, 0.5)} />)}
-  </div>
-</BaseLayout>
+<PostIndexPage lang="en" />

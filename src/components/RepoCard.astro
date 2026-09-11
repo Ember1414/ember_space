@@ -1,25 +1,38 @@
 ---
+import { ArrowUpRight, Star } from 'lucide-astro';
 import type { Repo } from '../lib/github';
+import { t, type Lang } from '../i18n/ui';
 
 interface Props {
   repo: Repo;
+  lang?: Lang;
 }
 
-const { repo } = Astro.props;
-const pushed = repo.pushed_at ? new Date(repo.pushed_at).toISOString().slice(0, 10) : null;
+const { repo, lang = 'zh' } = Astro.props;
 ---
 
-<article class="card">
-  <h3>
-    <a href={repo.homepage || repo.html_url} target="_blank" rel="noopener">
-      <span style="color: var(--accent-text);">▸</span> {repo.name}
-    </a>
-  </h3>
-  {repo.description && <p>{repo.description}</p>}
-  <div class="post-item-meta card-links">
-    {repo.language && <span class="tag">{repo.language}</span>}
-    {repo.stargazers_count > 0 && <span>⭐ {repo.stargazers_count}</span>}
-    {pushed && <span>{pushed}</span>}
-    <a href={repo.html_url} target="_blank" rel="noopener">GitHub ↗</a>
+<article class="repo-item">
+  <div class="repo-item-main">
+    <h3><a href={repo.homepage || repo.html_url} target="_blank" rel="noopener">{repo.name}</a></h3>
+    <p>{repo.description || t(lang, 'projects.repoFallback')}</p>
+    <div class="post-item-meta">
+      {repo.language && <span>{repo.language}</span>}
+      {repo.stargazers_count > 0 && <span class="repo-star"><Star size={13} aria-hidden="true" /> {repo.stargazers_count}</span>}
+    </div>
   </div>
+  <a class="repo-item-icon" href={repo.html_url} target="_blank" rel="noopener" aria-label={`${repo.name} GitHub`}>
+    <ArrowUpRight size={20} aria-hidden="true" />
+  </a>
 </article>
+
+<style>
+  .repo-star {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .repo-item .post-item-meta {
+    margin-top: 8px;
+  }
+</style>

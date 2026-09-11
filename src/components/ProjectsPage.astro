@@ -1,0 +1,120 @@
+---
+import { getCollection } from 'astro:content';
+import { ArrowRight, ExternalLink, FolderKanban, Github } from 'lucide-astro';
+import { SITE } from '../consts';
+import { t, type Lang } from '../i18n/ui';
+import { getGitHubRepos } from '../lib/github';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectCard from './ProjectCard.astro';
+import RepoCard from './RepoCard.astro';
+
+interface Props { lang: Lang; }
+
+const { lang } = Astro.props;
+const isZh = lang === 'zh';
+const base = isZh ? '' : '/en';
+const projects = (await getCollection('projects', ({ data }) => data.lang === lang))
+  .sort((a, b) => a.data.order - b.data.order || b.data.year - a.data.year);
+const explicitlyFeatured = projects.filter(({ data }) => data.featured);
+const selectedProjects = explicitlyFeatured.length > 0 ? explicitlyFeatured : projects.slice(0, 3);
+const selectedIds = new Set(selectedProjects.map(({ id }) => id));
+const additionalProjects = projects.filter(({ id }) => !selectedIds.has(id));
+const repos = await getGitHubRepos();
+
+const labels = isZh
+  ? {
+      eyebrow: 'PROJECTS / 构建记录',
+      emptyTitle: '项目案例正在整理中',
+      emptyText: '案例只会基于真实项目资料发布。公开源码仓库仍可从下方直接访问。',
+      emptyLink: '',
+      additional: '更多项目案例',
+      repoEmptyTitle: '仓库列表暂时不可用',
+      repoEmptyText: '你仍可前往 GitHub 查看全部公开仓库。',
+    }
+  : {
+      eyebrow: 'PROJECTS / BUILD NOTES',
+      emptyTitle: 'No English case studies yet',
+      emptyText: 'Project write-ups appear here only after an English edition is ready. The public repositories below still link to source code directly.',
+      emptyLink: 'Browse Chinese projects',
+      additional: 'More case studies',
+      repoEmptyTitle: 'Repository data is unavailable',
+      repoEmptyText: 'You can still browse every public repository on GitHub.',
+    };
+---
+
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'projects.title')}
+  description={t(lang, 'projects.subtitle')}
+  canonicalPath={`${base}/projects/`}
+  alternatePath={isZh ? '/en/projects/' : '/projects/'}
+>
+  <div class="projects-page" data-pagefind-body data-pagefind-filter={`lang:${lang}`} data-pagefind-meta={`lang:${lang}`}>
+    <div data-pagefind-filter="type:projects" data-pagefind-meta="type:projects">
+      <header class="page-intro anim">
+        <p class="eyebrow">{labels.eyebrow}</p>
+        <h1 class="page-title">{t(lang, 'projects.title')}</h1>
+        <p class="page-sub">{t(lang, 'projects.subtitle')}</p>
+      </header>
+
+      {selectedProjects.length > 0 ? (
+        <section class="projects-section anim" aria-labelledby={`selected-projects-${lang}`}>
+          <header class="section-head section-head--compact">
+            <div>
+              <p class="eyebrow"><FolderKanban size={15} aria-hidden="true" /> CASE STUDIES</p>
+              <h2 id={`selected-projects-${lang}`}>{t(lang, 'projects.featured')}</h2>
+            </div>
+          </header>
+          <div class="project-grid">
+            {selectedProjects.map((project) => <ProjectCard project={project} lang={lang} />)}
+          </div>
+        </section>
+      ) : (
+        <section class="empty-state case-empty anim" aria-labelledby={`projects-empty-${lang}`}>
+          <h2 id={`projects-empty-${lang}`}>{labels.emptyTitle}</h2>
+          <p>{labels.emptyText}</p>
+          {!isZh && <a class="empty-link" href="/projects/">{labels.emptyLink}<ArrowRight size={16} aria-hidden="true" /></a>}
+        </section>
+      )}
+
+      {additionalProjects.length > 0 && (
+        <section class="projects-section anim" aria-labelledby={`more-projects-${lang}`}>
+          <header class="section-head section-head--compact">
+            <div><p class="eyebrow">ARCHIVE</p><h2 id={`more-projects-${lang}`}>{labels.additional}</h2></div>
+          </header>
+          <div class="project-grid">
+            {additionalProjects.map((project) => <ProjectCard project={project} lang={lang} />)}
+          </div>
+        </section>
+      )}
+
+      <section class="projects-section repos-section anim" aria-labelledby={`public-repos-${lang}`}>
+        <header class="section-head">
+          <div>
+            <p class="eyebrow"><Github size={15} aria-hidden="true" /> OPEN SOURCE</p>
+            <h2 id={`public-repos-${lang}`}>{t(lang, 'projects.repos')}</h2>
+          </div>
+          <a class="section-link github-link" href={SITE.social.github} target="_blank" rel="noopener">{t(lang, 'projects.allOnGithub')}<ExternalLink size={16} aria-hidden="true" /></a>
+        </header>
+
+        {repos.length > 0 ? (
+          <div class="repo-list">{repos.map((repo) => <RepoCard repo={repo} lang={lang} />)}</div>
+        ) : (
+          <div class="empty-state"><h3>{labels.repoEmptyTitle}</h3><p>{labels.repoEmptyText}</p></div>
+        )}
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .projects-page { width: 100%; }
+  .projects-section + .projects-section, .case-empty + .projects-section { margin-top: 72px; }
+  .section-head--compact { margin-bottom: 22px; }
+  .section-head .eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 0.45rem; }
+  .section-head--compact h2 { font-size: 1.7rem; }
+  .github-link, .empty-link { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; font-weight: 700; }
+  .empty-link { margin-top: 18px; }
+  .case-empty { width: min(100%, 760px); }
+  @media (max-width: 760px) { .projects-section + .projects-section, .case-empty + .projects-section { margin-top: 56px; } }
+</style>

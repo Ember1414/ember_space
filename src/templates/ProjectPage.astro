@@ -1,0 +1,122 @@
+---
+import { Image } from 'astro:assets';
+import { render, type CollectionEntry } from 'astro:content';
+import { ArrowLeft, ArrowUpRight, Github } from 'lucide-astro';
+import { t, type Lang } from '../i18n/ui';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+  lang: Lang;
+}
+
+const { project, lang } = Astro.props;
+const { Content } = await render(project);
+const data = project.data;
+const base = lang === 'en' ? '/en' : '';
+---
+
+<article class="project-detail" data-pagefind-body data-pagefind-filter={`lang:${lang}`} data-pagefind-meta={`lang:${lang}`}>
+  <div data-pagefind-filter="type:projects" data-pagefind-meta="type:projects">
+    <a class="project-back" href={`${base}/projects/`}>
+      <ArrowLeft size={16} aria-hidden="true" />
+      {t(lang, 'projects.back')}
+    </a>
+
+    <header class="project-header anim">
+      <p class="eyebrow">PROJECT / CASE STUDY</p>
+      <div class="project-heading">
+        <div>
+          <h1>{data.name}</h1>
+          <p>{data.description}</p>
+        </div>
+        <p class="project-year">{data.year}</p>
+      </div>
+      <ul class="tag-list" aria-label="Project topics">
+        {data.tags.map((tag) => <li><span class="tag">{tag}</span></li>)}
+      </ul>
+    </header>
+
+    {data.image ? (
+      <div class="project-cover anim">
+        <Image src={data.image} alt={data.imageAlt ?? ''} widths={[760, 1120, 1600]} sizes="(max-width: 760px) 100vw, min(100vw - 48px, 1040px)" />
+      </div>
+    ) : (
+      <div class="project-cover project-cover--fallback anim" aria-hidden="true">
+        <span>{data.tags[0] ?? 'PROJECT'}</span>
+        <strong>{String(data.year).slice(-2)}</strong>
+      </div>
+    )}
+
+    <div class="project-layout">
+      <div class="prose project-prose anim"><Content /></div>
+
+      <aside class="project-aside anim" aria-label={data.name}>
+        <dl>
+          <div>
+            <dt>{lang === 'zh' ? '状态' : 'Status'}</dt>
+            <dd>{data.status ?? data.year}</dd>
+          </div>
+          {data.role && (
+            <div>
+              <dt>{t(lang, 'projects.role')}</dt>
+              <dd>{data.role}</dd>
+            </div>
+          )}
+        </dl>
+
+        {data.highlights.length > 0 && (
+          <section aria-labelledby={`project-highlights-${project.id}`}>
+            <h2 id={`project-highlights-${project.id}`}>{t(lang, 'projects.highlights')}</h2>
+            <ul>
+              {data.highlights.map((highlight) => <li>{highlight}</li>)}
+            </ul>
+          </section>
+        )}
+
+        {(data.url || data.repo) && (
+          <nav class="project-actions" aria-label={data.name}>
+            {data.url && <a class="button button--primary" href={data.url} target="_blank" rel="noopener">{t(lang, 'projects.visit')} <ArrowUpRight size={16} aria-hidden="true" /></a>}
+            {data.repo && <a href={data.repo} target="_blank" rel="noopener"><Github size={16} aria-hidden="true" /> {t(lang, 'projects.source')}</a>}
+          </nav>
+        )}
+      </aside>
+    </div>
+  </div>
+</article>
+
+<style>
+  .project-detail { width: min(100%, 1040px); margin-inline: auto; }
+  .project-back { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; margin-bottom: 34px; font-weight: 700; }
+  .project-header { margin-bottom: 30px; }
+  .project-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+  .project-heading h1 { max-width: 18ch; margin: 0.35rem 0 0.8rem; font-size: clamp(2.25rem, 5vw, 4rem); line-height: 1.05; }
+  .project-heading > div > p { max-width: 60ch; margin: 0; color: var(--text-muted); font-size: 1.08rem; line-height: 1.75; }
+  .project-year { flex: none; margin: 0 0 0.8rem; color: var(--accent); font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; }
+  .project-header .tag-list { margin-top: 24px; }
+  .project-cover { overflow: hidden; margin-bottom: 54px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-strong); }
+  .project-cover :global(img) { display: block; width: 100%; height: auto; }
+  .project-cover--fallback { display: flex; aspect-ratio: 16 / 7; align-items: flex-end; justify-content: space-between; padding: clamp(24px, 5vw, 56px); background: linear-gradient(90deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%), linear-gradient(0deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%), var(--surface-soft); background-size: 52px 52px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.82rem; }
+  .project-cover--fallback strong { color: var(--accent); font-size: clamp(4.5rem, 12vw, 9rem); line-height: 0.75; }
+  .project-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 0.35fr); gap: clamp(42px, 8vw, 96px); align-items: start; }
+  .project-prose { width: auto; }
+  .project-aside { padding-left: 26px; border-left: 1px solid var(--border); }
+  .project-aside dl { margin: 0; }
+  .project-aside dl > div, .project-aside section { padding-block: 0 22px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+  .project-aside dt, .project-aside h2 { margin: 0 0 0.45rem; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .project-aside dd { margin: 0; color: var(--text-soft); line-height: 1.55; }
+  .project-aside ul { margin: 0; padding-left: 1.15rem; color: var(--text-soft); font-size: 0.9rem; line-height: 1.55; }
+  .project-aside li + li { margin-top: 0.55rem; }
+  .project-aside li::marker { color: var(--accent); }
+  .project-actions { display: grid; gap: 12px; }
+  .project-actions a:not(.button) { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; font-weight: 700; }
+  .project-actions .button { justify-content: center; }
+  @media (max-width: 760px) {
+    .project-back { margin-bottom: 26px; }
+    .project-heading { display: block; }
+    .project-year { margin-top: 20px; }
+    .project-cover { margin-bottom: 42px; }
+    .project-cover--fallback { aspect-ratio: 16 / 9; }
+    .project-layout { grid-template-columns: 1fr; gap: 44px; }
+    .project-aside { padding: 28px 0 0; border-top: 1px solid var(--border); border-left: 0; }
+  }
+</style>

@@ -1,4 +1,5 @@
 ---
+import { Github, Mail, Rss } from 'lucide-astro';
 import { SITE } from '../consts';
 import { t, tf, type Lang } from '../i18n/ui';
 
@@ -7,68 +8,119 @@ interface Props {
 }
 
 const { lang = 'zh' } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
 const year = new Date().getFullYear();
-
-// 订阅表单消息传给内联脚本
-const msgs = {
-  sending: t(lang, 'footer.sending'),
-  ok: t(lang, 'footer.ok'),
-  duplicate: t(lang, 'footer.duplicate'),
-  invalid: t(lang, 'footer.invalid'),
-  serverError: t(lang, 'footer.serverError'),
-  networkError: t(lang, 'footer.networkError'),
-  fallbackError: t(lang, 'footer.fallbackError'),
-};
 ---
 
 <footer class="site-footer">
-  <div class="footer-inner">
+  <div class="footer-cta shell">
     <div>
-      <p class="prompt" style="font-size: 0.88rem; margin: 0 0 0.8rem;">{t(lang, 'footer.subscribe')}</p>
-      <form class="subscribe" id="subscribe-form">
-        <input type="email" name="email" required placeholder={t(lang, 'footer.placeholder')} aria-label="Email" />
-        <button class="btn" type="submit">{t(lang, 'footer.subscribeBtn')}</button>
-        <p class="form-msg" id="subscribe-msg" role="status" aria-live="polite"></p>
-      </form>
+      <p class="eyebrow">RSS / XML</p>
+      <h2>{t(lang, 'footer.rssTitle')}</h2>
+      <p>{t(lang, 'footer.rssText')}</p>
     </div>
-    <div class="footer-meta">
-      <span>{t(lang, 'footer.copyright')(SITE.author, year)} <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> &amp; <a href="https://pages.cloudflare.com" target="_blank" rel="noopener">Cloudflare Pages</a></span>
-      <span>
-        <a href={SITE.social.github} target="_blank" rel="noopener">GitHub</a>
-        ·
-        <a href={SITE.social.email}>Email</a>
-        ·
-        <a href="/rss.xml">RSS</a>
-      </span>
+    <a class="button button--primary" href="/rss.xml" aria-label={t(lang, 'a11y.rss')}>
+      <Rss size={18} aria-hidden="true" />
+      {t(lang, 'footer.rssButton')}
+    </a>
+  </div>
+
+  <div class="footer-bottom">
+    <div class="footer-bottom-inner shell">
+      <p>{tf(lang, 'footer.copyright', SITE.author, year)} · Built with Astro</p>
+      <nav aria-label={t(lang, 'a11y.utilityNav')}>
+        <a href={SITE.social.github} target="_blank" rel="noopener" aria-label={t(lang, 'a11y.github')} title="GitHub">
+          <Github size={18} aria-hidden="true" />
+        </a>
+        <a href={SITE.social.email} aria-label={t(lang, 'a11y.email')} title="Email">
+          <Mail size={18} aria-hidden="true" />
+        </a>
+        <a href="/rss.xml" aria-label={t(lang, 'a11y.rss')} title="RSS">
+          <Rss size={18} aria-hidden="true" />
+        </a>
+        <a href={`${base}/about/`}>{t(lang, 'nav.about')}</a>
+      </nav>
     </div>
   </div>
 </footer>
 
-<script define:vars={{ msgs, lang }}>
-  const form = document.getElementById('subscribe-form');
-  const msg = document.getElementById('subscribe-msg');
+<style>
+  .site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
 
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!msg) return;
-    const email = (new FormData(form).get('email') || '').trim();
-    msg.className = 'form-msg';
-    msg.textContent = msgs.sending;
-    try {
-      const res = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      msg.className = 'form-msg ' + (res.ok ? 'ok' : 'err');
-      if (res.status === 400) msg.textContent = msgs.invalid;
-      else if (res.ok && data.duplicate) msg.textContent = msgs.duplicate;
-      else if (res.ok) { msg.textContent = msgs.ok; form.reset(); }
-      else msg.textContent = data.error || msgs.fallbackError;
-    } catch {
-      msg.className = 'form-msg err';
-      msg.textContent = msgs.networkError;
+  .footer-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding-block: 48px;
+  }
+
+  .footer-cta h2 {
+    margin: 0;
+    font-size: 1.65rem;
+  }
+
+  .footer-cta p:not(.eyebrow) {
+    max-width: 58ch;
+    margin: 0.55rem 0 0;
+    color: var(--text-muted);
+  }
+
+  .footer-bottom {
+    border-top: 1px solid var(--border);
+    background: var(--surface-soft);
+  }
+
+  .footer-bottom-inner {
+    display: flex;
+    min-height: 72px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .footer-bottom-inner p {
+    margin: 0;
+  }
+
+  .footer-bottom nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .footer-bottom nav a {
+    display: inline-flex;
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+  }
+
+  .footer-bottom nav a:hover {
+    color: var(--accent);
+  }
+
+  @media (max-width: 640px) {
+    .footer-cta,
+    .footer-bottom-inner {
+      align-items: flex-start;
+      flex-direction: column;
     }
-  });
-</script>
+
+    .footer-cta {
+      padding-block: 40px;
+    }
+
+    .footer-bottom-inner {
+      padding-block: 18px;
+    }
+  }
+</style>

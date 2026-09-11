@@ -1,0 +1,240 @@
+---
+import { getCollection } from 'astro:content';
+import { Archive, ArrowRight, BookOpen, Hash } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t, tf, type Lang } from '../i18n/ui';
+import PostCard from './PostCard.astro';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const isZh = lang === 'zh';
+const base = isZh ? '' : '/en';
+const posts = (await getCollection('posts', ({ data }) => !data.draft && data.lang === lang))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const explicitlyFeatured = posts.filter(({ data }) => data.featured);
+const featuredPosts = (explicitlyFeatured.length > 0 ? explicitlyFeatured : posts.slice(0, 1)).slice(0, 2);
+const topicCounts = new Map<string, number>();
+for (const post of posts) {
+  for (const tag of post.data.tags) topicCounts.set(tag, (topicCounts.get(tag) ?? 0) + 1);
+}
+const topics = [...topicCounts.entries()]
+  .sort(([tagA, countA], [tagB, countB]) => countB - countA || tagA.localeCompare(tagB, lang))
+  .slice(0, 12);
+const postsByYear = new Map<number, typeof posts>();
+for (const post of posts) {
+  const year = post.data.pubDate.getFullYear();
+  const group = postsByYear.get(year) ?? [];
+  group.push(post);
+  postsByYear.set(year, group);
+}
+
+const empty = isZh
+  ? {
+      title: '文章正在整理中',
+      text: '这里会发布经过整理的工程笔记与实践记录。',
+      link: '',
+    }
+  : {
+      title: t(lang, 'posts.emptyTitle'),
+      text: t(lang, 'posts.emptyText'),
+      link: 'Browse Chinese posts',
+    };
+---
+
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'posts.title')}
+  description={t(lang, 'posts.subtitle')}
+  canonicalPath={`${base}/posts/`}
+  alternatePath={isZh ? '/en/posts/' : '/posts/'}
+>
+  <div
+    class="post-index"
+    data-pagefind-body
+    data-pagefind-filter={`lang:${lang}`}
+    data-pagefind-meta={`lang:${lang}`}
+  >
+    <div data-pagefind-filter="type:posts" data-pagefind-meta="type:posts">
+      <header class="page-intro anim">
+        <p class="eyebrow">{isZh ? 'WRITING / 工程笔记' : 'WRITING / FIELD NOTES'}</p>
+        <h1 class="page-title">{t(lang, 'posts.title')}</h1>
+        <p class="page-sub">{t(lang, 'posts.subtitle')} <span class="post-count">{tf(lang, 'posts.count', posts.length)}</span></p>
+      </header>
+
+      {posts.length === 0 ? (
+        <section class="empty-state post-empty anim" aria-labelledby={`posts-empty-${lang}`}>
+          <h2 id={`posts-empty-${lang}`}>{empty.title}</h2>
+          <p>{empty.text}</p>
+          {!isZh && (
+            <a class="empty-link" href="/posts/">
+              {empty.link}
+              <ArrowRight size={16} aria-hidden="true" />
+            </a>
+          )}
+        </section>
+      ) : (
+        <>
+          {featuredPosts.length > 0 && (
+            <section class="index-section anim" aria-labelledby={`featured-posts-${lang}`}>
+              <header class="section-head section-head--compact">
+                <div>
+                  <p class="eyebrow"><BookOpen size={15} aria-hidden="true" /> {isZh ? 'EDITOR\'S PICK' : 'EDITOR\'S PICK'}</p>
+                  <h2 id={`featured-posts-${lang}`}>{t(lang, 'posts.featured')}</h2>
+                </div>
+              </header>
+              <ol class="post-list featured-list">
+                {featuredPosts.map((post) => <PostCard post={post} lang={lang} headingLevel={3} />)}
+              </ol>
+            </section>
+          )}
+
+          {topics.length > 0 && (
+            <section class="index-section topics-section anim" aria-labelledby={`post-topics-${lang}`}>
+              <header class="section-head section-head--compact">
+                <div>
+                  <p class="eyebrow"><Hash size={15} aria-hidden="true" /> TOPICS</p>
+                  <h2 id={`post-topics-${lang}`}>{t(lang, 'posts.topics')}</h2>
+                </div>
+              </header>
+              <ul class="tag-list topic-list">
+                {topics.map(([tag, count]) => (
+                  <li>
+                    <a class="tag topic-link" href={`${base}/tags/${encodeURIComponent(tag)}/`}>
+                      <span>{tag}</span>
+                      <span class="topic-count" aria-label={tf(lang, 'tag.count', count)}>{count}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section class="index-section archive-section anim" aria-labelledby={`post-archive-${lang}`}>
+            <header class="section-head section-head--compact">
+              <div>
+                <p class="eyebrow"><Archive size={15} aria-hidden="true" /> ARCHIVE</p>
+                <h2 id={`post-archive-${lang}`}>{t(lang, 'posts.archive')}</h2>
+              </div>
+            </header>
+            {[...postsByYear.entries()].map(([year, yearPosts]) => (
+              <section class="year-group" aria-labelledby={`posts-${lang}-${year}`}>
+                <h3 class="year-heading" id={`posts-${lang}-${year}`}>{year}</h3>
+                <ol class="post-list">
+                  {yearPosts.map((post) => <PostCard post={post} lang={lang} headingLevel={3} />)}
+                </ol>
+              </section>
+            ))}
+          </section>
+        </>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .post-index {
+    width: min(100%, 980px);
+    margin-inline: auto;
+  }
+
+  .post-count {
+    display: inline-block;
+    margin-left: 0.5rem;
+    color: var(--text-soft);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .index-section + .index-section {
+    margin-top: 64px;
+  }
+
+  .section-head--compact {
+    margin-bottom: 18px;
+  }
+
+  .section-head--compact .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 0.45rem;
+  }
+
+  .section-head--compact h2 {
+    font-size: 1.7rem;
+  }
+
+  .featured-list {
+    padding-inline: 20px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .featured-list :global(.post-item:first-child) {
+    border-top: 0;
+  }
+
+  .featured-list :global(.post-item:last-child) {
+    border-bottom: 0;
+  }
+
+  .topic-list {
+    gap: 10px;
+  }
+
+  .topic-link {
+    min-height: 42px;
+    gap: 12px;
+    padding-inline: 0.78rem;
+  }
+
+  .topic-count {
+    display: inline-grid;
+    min-width: 1.45rem;
+    height: 1.45rem;
+    place-items: center;
+    border-radius: 3px;
+    background: var(--surface-soft);
+    color: var(--text-muted);
+    font-size: 0.68rem;
+  }
+
+  .year-heading {
+    margin-bottom: 0;
+    padding-block: 0.7rem;
+    border-bottom: 1px solid var(--border-strong);
+    color: var(--accent);
+    font-size: 0.88rem;
+  }
+
+  .empty-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 7px;
+    margin-top: 18px;
+    font-weight: 700;
+  }
+
+  @media (max-width: 760px) {
+    .post-count {
+      display: block;
+      margin: 0.45rem 0 0;
+    }
+
+    .featured-list {
+      padding-inline: 16px;
+    }
+
+    .index-section + .index-section {
+      margin-top: 52px;
+    }
+  }
+</style>
