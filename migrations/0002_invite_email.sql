@@ -1,0 +1,2 @@
+ALTER TABLE invites ADD COLUMN invited_email TEXT COLLATE NOCASE;
+
