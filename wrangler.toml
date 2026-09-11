@@ -1,4 +1,15 @@
 # Cloudflare Pages 配置：wrangler pages deploy 时自动应用
 name = "ember-space"
-pages_build_output_dir = "dist"
-compatibility_date = "2026-09-01"
+pages_build_output_dir = "dist-pages"
+compatibility_date = "2026-09-11"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ember-db"
+database_id = "15023eb8-a0ad-4f0c-a137-0a80e607ce7b"
+migrations_dir = "migrations"
+
+[vars]
+# INITIAL_SETUP_KEY and SESSION_SECRET are secrets; set them with `wrangler pages secret put`.
+ENVIRONMENT = "production"

@@ -1,0 +1,51 @@
+---
+import { ArrowLeft } from 'lucide-astro';
+import Giscus from './Giscus.astro';
+import PostReadingEnhancements from './PostReadingEnhancements.astro';
+import PostToc from './PostToc.astro';
+import type { PostRecord, PostSummary } from '../lib/db';
+import { t, tf, type Lang } from '../i18n/ui';
+import { buildPostToc } from '../lib/posts/toc';
+import '../styles/pages/post.css';
+
+interface Props { lang: Lang; post: PostRecord; posts?: PostSummary[]; }
+const { lang, post, posts = [] } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+const fmt = (value: string) => value.slice(0, 10);
+const minutes = Math.max(1, Math.round(post.bodyLength / 400));
+const currentIndex = posts.findIndex((item) => item.slug === post.slug);
+const older = currentIndex >= 0 ? posts[currentIndex + 1] : null;
+const newer = currentIndex > 0 ? posts[currentIndex - 1] : null;
+const tagSet = new Set(post.tags);
+const related = posts
+  .filter((item) => item.slug !== post.slug)
+  .map((item) => ({ item, score: item.tags.filter((tag) => tagSet.has(tag)).length }))
+  .filter(({ score }) => score > 0)
+  .sort((a, b) => b.score - a.score || b.item.pubDate.localeCompare(a.item.pubDate))
+  .slice(0, 3)
+  .map(({ item }) => item);
+const toc = buildPostToc(post.headings);
+---
+<div class="reading-progress" role="progressbar" aria-label={t(lang, 'post.progress')} aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-reading-progress></div>
+<div class="post-layout">
+  <article data-pagefind-filter={`lang:${lang}`}>
+    <div data-pagefind-body data-pagefind-filter="type:posts">
+      <header class="post-header anim">
+        <a class="post-back" href={`${base}/posts/`}><ArrowLeft size={17} stroke-width={1.8} aria-hidden="true" />{t(lang, 'post.back')}</a>
+        {post.series && <p class="post-series">{post.series}</p>}
+        <h1 data-pagefind-meta="title">{post.title}</h1>
+        <p class="post-deck">{post.description}</p>
+        <div class="post-meta"><time datetime={post.pubDate}>{fmt(post.pubDate)}</time>{post.updatedDate && <time datetime={post.updatedDate}>{tf(lang, 'post.updated', fmt(post.updatedDate))}</time>}<span>{tf(lang, 'post.min', minutes)}</span></div>
+        {post.tags.length > 0 && <ul class="tag-list post-tags" aria-label={lang === 'zh' ? '文章标签' : 'Post tags'}>{post.tags.map((tag) => <li><a class="tag" href={`${base}/tags/${encodeURIComponent(tag)}/`}>{tag}</a></li>)}</ul>}
+      </header>
+      {toc.length > 0 && <PostToc items={toc} lang={lang} variant="mobile" />}
+      {post.cover && <figure class="post-cover anim" data-pagefind-ignore><img src={post.cover} alt={post.coverAlt ?? ''} loading="eager" /></figure>}
+      <div class="prose article-body anim" data-article-body data-heading-link-label={lang === 'zh' ? '链接到本节：' : 'Link to section: '} set:html={post.bodyHtml}></div>
+    </div>
+    {related.length > 0 && <section class="related-posts" aria-labelledby="related-posts-title" data-pagefind-ignore><h2 id="related-posts-title">{t(lang, 'post.related')}</h2><ul>{related.map((item) => <li><a href={`${base}/posts/${item.slug}/`}><span>{item.title}</span><time datetime={item.pubDate}>{fmt(item.pubDate)}</time></a></li>)}</ul></section>}
+    {(older || newer) && <nav class="post-nav" aria-label={lang === 'zh' ? '文章导航' : 'Post navigation'} data-pagefind-ignore>{older ? <a class="post-nav-link post-nav-link--older" href={`${base}/posts/${older.slug}/`} rel="prev"><small>{t(lang, 'post.older')}</small><span>{older.title}</span></a> : <span></span>}{newer && <a class="post-nav-link post-nav-link--newer" href={`${base}/posts/${newer.slug}/`} rel="next"><small>{t(lang, 'post.newer')}</small><span>{newer.title}</span></a>}</nav>}
+    <div data-pagefind-ignore><Giscus lang={lang} /></div>
+  </article>
+  {toc.length > 0 && <PostToc items={toc} lang={lang} variant="desktop" />}
+</div>
+<PostReadingEnhancements lang={lang} />

@@ -1,0 +1,430 @@
+---
+interface EditorPost {
+  id?: string;
+  title?: string;
+  slug?: string;
+  description?: string;
+  content?: string;
+  body?: string;
+  tags?: string[];
+  lang?: 'zh' | 'en';
+  cover?: string;
+  status?: 'draft' | 'published' | 'archived';
+  featured?: boolean;
+  pubDate?: string;
+  updatedDate?: string;
+  version?: number;
+}
+
+interface Props {
+  post?: EditorPost | null;
+  postId?: string;
+}
+
+const { post = null, postId = '' } = Astro.props;
+const requiresLoad = Boolean(postId && !post);
+const initial = {
+  id: (post?.id ?? postId) || null,
+  title: post?.title ?? '',
+  slug: post?.slug ?? '',
+  description: post?.description ?? '',
+  content: post?.content ?? post?.body ?? '',
+  tags: post?.tags ?? [],
+  lang: post?.lang ?? 'zh',
+  cover: post?.cover ?? '',
+  status: post?.status ?? 'draft',
+  featured: post?.featured ?? false,
+  pubDate: post?.pubDate ? String(post.pubDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
+  updatedDate: post?.updatedDate ? String(post.updatedDate).slice(0, 10) : '',
+  version: post?.version ?? null,
+};
+const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
+---
+
+<form class="editor-shell" data-editor-form novalidate inert={requiresLoad} aria-busy={requiresLoad ? 'true' : 'false'}>
+  <div class="editor-toolbar">
+    <div>
+      <p class="eyebrow">EDITOR / MARKDOWN</p>
+      <h1 class="page-title">{post || postId ? '编辑文章' : '新建文章'}</h1>
+    </div>
+    <div class="button-row editor-actions">
+      <a class="button button--secondary" href="/admin/">取消</a>
+      <button class="button button--secondary" type="button" data-save-draft>保存草稿</button>
+      {(post || postId) && <button class="button button--secondary" type="button" data-archive data-owner-only hidden>撤回文章</button>}
+      <button class="button button--primary" type="button" data-publish>发布文章</button>
+    </div>
+  </div>
+
+  <div class="editor-message" data-editor-message role="status" aria-live="polite">{requiresLoad ? '正在加载文章…' : ''}</div>
+
+  <div class="editor-fields card">
+    <div class="field field--wide">
+      <label for="post-title">标题 <span aria-hidden="true">*</span></label>
+      <input id="post-title" name="title" required autocomplete="off" placeholder="文章标题" />
+    </div>
+    <div class="field">
+      <label for="post-slug">URL 标识</label>
+      <input id="post-slug" name="slug" autocomplete="off" placeholder="留空则由标题生成" />
+      <small>只使用字母、数字和短横线。</small>
+    </div>
+    <div class="field">
+      <label for="post-date">发布日期</label>
+      <input id="post-date" name="pubDate" type="date" />
+    </div>
+    <div class="field field--wide">
+      <label for="post-description">摘要 <span aria-hidden="true">*</span></label>
+      <textarea id="post-description" name="description" rows="2" required placeholder="用于首页、分享卡片和 RSS 的简短介绍"></textarea>
+    </div>
+    <div class="field">
+      <label for="post-tags">标签</label>
+      <input id="post-tags" name="tags" autocomplete="off" placeholder="Astro, Cloudflare, 工程" />
+      <small>多个标签用逗号分隔。</small>
+    </div>
+    <div class="field">
+      <label for="post-lang">语言</label>
+      <select id="post-lang" name="lang"><option value="zh">中文</option><option value="en">English</option></select>
+    </div>
+    <div class="field">
+      <label for="post-cover">封面地址</label>
+      <input id="post-cover" name="cover" type="url" autocomplete="off" placeholder="https://…" />
+    </div>
+    <div class="field field-checks">
+      <label class="check-label"><input id="post-featured" name="featured" type="checkbox" /> <span>设为精选文章</span></label>
+      <label for="post-status">状态</label>
+      <select id="post-status" name="status"><option value="draft">草稿</option><option value="published">已发布</option><option value="archived" data-owner-only hidden>已撤回</option></select>
+    </div>
+  </div>
+
+  <div class="editor-tabs" role="tablist" aria-label="编辑器视图">
+    <button type="button" class="editor-tab is-active" role="tab" aria-selected="true" data-editor-tab="edit">编辑</button>
+    <button type="button" class="editor-tab" role="tab" aria-selected="false" data-editor-tab="preview">预览</button>
+  </div>
+  <div class="editor-grid">
+    <section class="editor-pane editor-pane--write" data-editor-pane="edit" aria-label="Markdown 编辑区">
+      <label class="sr-only" for="post-content">Markdown 正文</label>
+      <textarea id="post-content" name="content" class="markdown-input" spellcheck="false" placeholder={'# 开始写作\n\n支持 Markdown 标题、列表、引用、链接和代码块。'}></textarea>
+    </section>
+    <section class="editor-pane editor-pane--preview" data-editor-pane="preview" aria-label="文章预览">
+      <div class="prose preview-content" data-preview><p class="preview-placeholder">在左侧输入 Markdown，右侧会实时预览。</p></div>
+    </section>
+  </div>
+
+  {(post || postId) && <button class="danger-link" type="button" data-delete data-owner-only hidden>删除这篇文章</button>}
+  <p class="autosave-hint" data-autosave-hint>草稿会在停止编辑后自动保存。</p>
+</form>
+
+<script is:inline type="application/json" data-editor-initial set:html={serialized}></script>
+
+<script>
+  import { EditorLifecycle } from '../lib/admin/editor-lifecycle';
+  import { safeMarkdownHtml } from '../lib/posts/render';
+
+  const form = document.querySelector<HTMLFormElement>('[data-editor-form]')!;
+
+  interface EditorValues {
+    id: string | null;
+    title: string;
+    slug: string;
+    description: string;
+    content?: string;
+    body?: string;
+    tags: string[];
+    lang: 'zh' | 'en';
+    cover: string;
+    status: 'draft' | 'published' | 'archived';
+    featured: boolean;
+    pubDate: string;
+    updatedDate?: string;
+    version: number | null;
+  }
+
+  const initialData = document.querySelector<HTMLScriptElement>('[data-editor-initial]');
+  const initial = JSON.parse(initialData?.textContent || '{}') as EditorValues;
+  const message = form.querySelector<HTMLElement>('[data-editor-message]');
+  const preview = form.querySelector<HTMLElement>('[data-preview]');
+  const contentInput = form.querySelector<HTMLTextAreaElement>('#post-content');
+  const slugInput = form.querySelector<HTMLInputElement>('#post-slug');
+  const statusInput = form.querySelector('#post-status') as HTMLSelectElement | null;
+  const draftButton = form.querySelector<HTMLButtonElement>('[data-save-draft]');
+  const archiveButton = form.querySelector<HTMLButtonElement>('[data-archive]');
+  const publishButton = form.querySelector<HTMLButtonElement>('[data-publish]');
+  const tabs = Array.from(form.querySelectorAll<HTMLButtonElement>('[data-editor-tab]'));
+  const panes = Array.from(form.querySelectorAll<HTMLElement>('[data-editor-pane]'));
+  let csrfToken = '';
+  const lifecycle = new EditorLifecycle(Boolean(initial.id && !initial.title));
+  let autosaveTimer = 0;
+  let previewTimer = 0;
+
+  function setInteractive(value: boolean) {
+    form.inert = !value;
+    form.setAttribute('aria-busy', String(!value));
+  }
+
+  function markdownToHtml(markdown: string) {
+    return markdown.trim()
+      ? safeMarkdownHtml(markdown)
+      : '<p class="preview-placeholder">在左侧输入 Markdown，右侧会实时预览。</p>';
+  }
+
+  function setMessage(text: string, kind = '') {
+    if (!message) return;
+    message.textContent = text;
+    message.dataset.kind = kind;
+  }
+
+  function updatePreview() {
+    if (preview) preview.innerHTML = markdownToHtml(contentInput?.value || '');
+  }
+
+  function schedulePreview() {
+    window.clearTimeout(previewTimer);
+    previewTimer = window.setTimeout(updatePreview, 120);
+  }
+
+  function setFields(values: Partial<EditorValues>) {
+    const set = (selector: string, value: unknown) => {
+      const element = form.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (element) element.value = value == null ? '' : String(value);
+    };
+    set('#post-title', values.title); set('#post-slug', values.slug); set('#post-description', values.description);
+    set('#post-tags', (values.tags || []).join(', ')); set('#post-lang', values.lang || 'zh'); set('#post-cover', values.cover);
+    set('#post-status', values.status || 'draft'); set('#post-date', values.pubDate || new Date().toISOString().slice(0, 10)); set('#post-content', values.content ?? values.body);
+    const featured = form.querySelector<HTMLInputElement>('#post-featured'); if (featured) featured.checked = Boolean(values.featured);
+  }
+  setFields(initial);
+  updatePreview();
+
+  async function getCsrf() {
+    if (csrfToken) return csrfToken;
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json() as { csrfToken?: string; csrf?: string };
+        csrfToken = data.csrfToken || data.csrf || '';
+      }
+    } catch { /* API may be unavailable while editing locally. */ }
+    return csrfToken;
+  }
+
+  async function loadExisting() {
+    if (!initial.id || initial.title) return;
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(initial.id)}`, { credentials: 'include' });
+      if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+      if (!response.ok) throw new Error('文章不存在或暂时无法读取。');
+      const data = await response.json() as { post?: Partial<EditorValues> } & Partial<EditorValues>;
+      const values = data.post || data;
+      window.clearTimeout(autosaveTimer);
+      window.clearTimeout(previewTimer);
+      setFields(values);
+      Object.assign(initial, values);
+      lifecycle.loadSucceeded();
+      setInteractive(true);
+      setMessage('');
+      updatePreview();
+    } catch (error) {
+      window.clearTimeout(autosaveTimer);
+      window.clearTimeout(previewTimer);
+      lifecycle.loadFailed();
+      setInteractive(false);
+      setMessage(error instanceof Error ? error.message : '读取文章失败。', 'error');
+    }
+  }
+  loadExisting();
+
+  function formData(statusOverride?: 'draft' | 'published' | 'archived') {
+    const tags = (form.querySelector<HTMLInputElement>('#post-tags')?.value || '').split(',').map((tag) => tag.trim()).filter(Boolean);
+    const body = contentInput?.value || '';
+    return {
+      title: form.querySelector<HTMLInputElement>('#post-title')?.value.trim() || '',
+      slug: slugInput?.value.trim() || '',
+      description: form.querySelector<HTMLTextAreaElement>('#post-description')?.value.trim() || '',
+      body,
+      content: body,
+      tags,
+      lang: (form.querySelector('#post-lang') as HTMLSelectElement | null)?.value || 'zh',
+      cover: form.querySelector<HTMLInputElement>('#post-cover')?.value.trim() || '',
+      status: statusOverride || statusInput?.value || 'draft',
+      featured: form.querySelector<HTMLInputElement>('#post-featured')?.checked || false,
+      pubDate: form.querySelector<HTMLInputElement>('#post-date')?.value || new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  function setSaving(value: boolean) {
+    if (draftButton) draftButton.disabled = value;
+    if (archiveButton) archiveButton.disabled = value;
+    if (publishButton) publishButton.disabled = value;
+  }
+
+  function scheduleAutosave() {
+    window.clearTimeout(autosaveTimer);
+    if (!lifecycle.shouldAutosave((statusInput?.value || 'draft') as EditorValues['status'])) return;
+    autosaveTimer = window.setTimeout(async () => {
+      if (!lifecycle.shouldAutosave((statusInput?.value || 'draft') as EditorValues['status'])) return;
+      const result = await save('draft', true);
+      if (result && !lifecycle.dirty) setMessage('草稿已自动保存。', 'success');
+    }, 10000);
+  }
+
+  async function save(statusOverride: 'draft' | 'published' | 'archived' = 'draft', silent = false) {
+    if (!lifecycle.interactive) {
+      if (!silent) setMessage('文章尚未加载完成。', 'error');
+      return null;
+    }
+    if (lifecycle.isSaving) {
+      if (!silent) setMessage('正在保存，请稍候。');
+      return null;
+    }
+    const payload = {
+      ...formData(statusOverride),
+      ...(initial.id ? { expectedVersion: initial.version } : {}),
+    };
+    if (initial.id && (!Number.isSafeInteger(initial.version) || Number(initial.version) < 1)) {
+      if (!silent) setMessage('文章版本无效，请重新加载页面。', 'error');
+      return null;
+    }
+    if (!payload.title || !payload.description) { if (!silent) setMessage('请先填写标题和摘要。', 'error'); return null; }
+    const savedRevision = lifecycle.beginSave();
+    if (savedRevision === null) return null;
+    setSaving(true);
+    if (!silent) {
+      setMessage(statusOverride === 'published' ? '正在发布…' : statusOverride === 'archived' ? '正在撤回…' : '正在保存…');
+    }
+    const token = await getCsrf();
+    const endpoint = initial.id ? `/api/posts/${encodeURIComponent(initial.id)}` : '/api/posts';
+    try {
+      const response = await fetch(endpoint, { method: initial.id ? 'PATCH' : 'POST', credentials: 'include', headers: { 'content-type': 'application/json', ...(token ? { 'x-csrf-token': token } : {}) }, body: JSON.stringify(payload) });
+      const data = await response.json().catch(() => ({})) as { id?: string; post?: { id?: string; slug?: string; version?: number }; error?: string | { message?: string }; message?: string };
+      if (response.status === 401) { window.location.href = '/admin/login/'; return null; }
+      const failureMessage = typeof data.error === 'string' ? data.error : data.error?.message || data.message || `保存失败（${response.status}）`;
+      if (response.status === 409) {
+        setMessage(`${failureMessage} 当前输入仍保留。`, 'error');
+        return null;
+      }
+      if (!response.ok) throw new Error(failureMessage);
+      lifecycle.completeSave(savedRevision);
+      const savedId = data.id || data.post?.id;
+      if (!initial.id && savedId) { initial.id = savedId; window.history.replaceState({}, '', `/admin/posts/${encodeURIComponent(savedId)}/`); }
+      if (Number.isSafeInteger(data.post?.version)) initial.version = data.post!.version!;
+      if (data.post?.slug && slugInput) slugInput.value = data.post.slug;
+      if (statusInput) statusInput.value = statusOverride;
+      if (statusOverride === 'published') {
+        window.clearTimeout(autosaveTimer);
+        publishButton?.removeAttribute('data-confirm');
+        if (publishButton) publishButton.textContent = '发布文章';
+        if (!silent) setMessage(lifecycle.dirty ? '当前版本已发布，刚刚输入的修改尚未保存。' : '文章已发布。', 'success');
+      } else if (statusOverride === 'archived') {
+        window.clearTimeout(autosaveTimer);
+        if (!silent) setMessage(lifecycle.dirty ? '文章已撤回，刚刚输入的修改尚未保存。' : '文章已撤回。', 'success');
+      } else {
+        if (!silent) setMessage(lifecycle.dirty ? '已保存当前版本，仍有新的修改待保存。' : '草稿已保存。', 'success');
+        if (lifecycle.dirty) scheduleAutosave();
+      }
+      return data;
+    } catch (error) {
+      lifecycle.failSave();
+      const reason = error instanceof Error ? error.message : '保存失败，请稍后重试。';
+      setMessage(silent ? `自动保存失败：${reason}` : reason, 'error');
+      if (silent && lifecycle.dirty) scheduleAutosave();
+      return null;
+    } finally {
+      if (lifecycle.isSaving) lifecycle.failSave();
+      setSaving(false);
+    }
+  }
+
+  form.addEventListener('input', () => {
+    if (!lifecycle.markChanged()) return;
+    schedulePreview();
+    if (publishButton) {
+      publishButton.dataset.confirm = '';
+      publishButton.textContent = '发布文章';
+    }
+    scheduleAutosave();
+  });
+  draftButton?.addEventListener('click', () => save('draft'));
+  archiveButton?.addEventListener('click', async () => {
+    if (!initial.id || !window.confirm('确定撤回这篇文章吗？撤回后访客将无法访问。')) return;
+    await save('archived');
+  });
+  publishButton?.addEventListener('click', async () => {
+    updatePreview();
+    if (publishButton.dataset.confirm !== 'true') {
+      publishButton.dataset.confirm = 'true';
+      publishButton.textContent = '确认发布';
+      const previewTab = tabs.find((tab) => tab.dataset.editorTab === 'preview');
+      previewTab?.click();
+      setMessage('请检查最终预览，然后确认发布。');
+      preview?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
+      return;
+    }
+    await save('published');
+  });
+  form.querySelector<HTMLButtonElement>('[data-delete]')?.addEventListener('click', async () => {
+    if (!initial.id || !window.confirm('确定删除这篇文章吗？此操作不可撤销。')) return;
+    const token = await getCsrf();
+    const response = await fetch(`/api/posts/${encodeURIComponent(initial.id)}`, { method: 'DELETE', credentials: 'include', headers: token ? { 'x-csrf-token': token } : {} });
+    if (response.ok) window.location.href = '/admin/';
+    else setMessage('删除失败，请稍后重试。', 'error');
+  });
+  const mobileLayout = window.matchMedia('(max-width: 760px)');
+  function selectView(view = 'edit') {
+    tabs.forEach((candidate) => { const active = candidate.dataset.editorTab === view; candidate.classList.toggle('is-active', active); candidate.setAttribute('aria-selected', String(active)); });
+    panes.forEach((pane) => { pane.hidden = mobileLayout.matches && pane.dataset.editorPane !== view; });
+  }
+  tabs.forEach((tab) => tab.addEventListener('click', () => selectView(tab.dataset.editorTab)));
+  const syncLayout = () => selectView(tabs.find((tab) => tab.classList.contains('is-active'))?.dataset.editorTab);
+  mobileLayout.addEventListener('change', syncLayout);
+  syncLayout();
+</script>
+
+<style>
+  .editor-shell { width: min(100%, 1120px); margin-inline: auto; }
+  .editor-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+  .editor-toolbar .page-title { margin: 0; }
+  .editor-actions { justify-content: end; }
+  .editor-message { min-height: 1.7em; margin-bottom: 12px; color: var(--text-muted); font-size: 0.9rem; }
+  .editor-message[data-kind='error'] { color: var(--accent-strong); }
+  .editor-message[data-kind='success'] { color: var(--success); }
+  .editor-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; padding: 22px; margin-bottom: 22px; }
+  .field { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+  .field--wide { grid-column: 1 / -1; }
+  .field label { color: var(--text-soft); font-size: 0.82rem; font-weight: 750; }
+  .field label span { color: var(--accent); }
+  .field input, .field textarea, .field select { width: 100%; padding: 0.65rem 0.72rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .field textarea { min-height: 74px; resize: vertical; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--focus); outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent); }
+  .field small { color: var(--text-muted); font-size: 0.74rem; }
+  .field-checks { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 8px; }
+  .check-label { display: flex; min-height: 42px; align-items: center; gap: 8px; }
+  .check-label input { width: 18px; height: 18px; }
+  .editor-tabs { display: none; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .editor-tab { min-height: 42px; padding: 0 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); font-weight: 750; cursor: pointer; }
+  .editor-tab.is-active { border-bottom-color: var(--accent); color: var(--text); }
+  .editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .editor-pane { min-width: 0; min-height: 520px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+  .markdown-input { display: block; width: 100%; height: 100%; min-height: 520px; padding: 20px; border: 0; outline: 0; resize: vertical; background: transparent; color: var(--text); font: 0.9rem/1.75 var(--font-mono); }
+  .preview-content { min-height: 520px; padding: 20px; }
+  .preview-placeholder { color: var(--text-muted); }
+  .danger-link { margin-top: 24px; padding: 0; border: 0; background: transparent; color: var(--accent-strong); font-size: 0.84rem; font-weight: 700; cursor: pointer; }
+  .danger-link:hover { text-decoration: underline; }
+  .danger-link[hidden], .field option[hidden], .editor-pane[hidden] { display: none; }
+  .autosave-hint { margin: 10px 0 0; color: var(--text-muted); font-size: 0.78rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  @media (max-width: 760px) {
+    .editor-toolbar { align-items: start; flex-direction: column; }
+    .editor-actions { width: 100%; justify-content: start; }
+    .editor-actions .button { flex: 1; }
+    .editor-fields { grid-template-columns: 1fr; padding: 16px; }
+    .field--wide { grid-column: auto; }
+    .field-checks { grid-template-columns: 1fr; }
+    .editor-tabs { display: flex; }
+    .editor-grid { display: block; }
+    .editor-pane { min-height: 420px; }
+    .editor-pane--preview { margin-top: 0; }
+    .markdown-input, .preview-content { min-height: 420px; }
+  }
+</style>

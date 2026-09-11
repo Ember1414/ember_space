@@ -1,5 +1,33 @@
 ---
 import PostIndexPage from '../../../components/PostIndexPage.astro';
----
+import DbPostIndexPage from '../../../components/DbPostIndexPage.astro';
+import PublicContentUnavailable from '../../../components/PublicContentUnavailable.astro';
+import { allowsStaticPostFallback, getPublishedPostSummaries, runtimeEnv } from '../../../lib/db';
 
-<PostIndexPage lang="en" />
+const env = runtimeEnv(Astro.locals);
+const hasDb = Boolean(env?.DB);
+let dbPosts = null;
+let dbUnavailable = !hasDb && !allowsStaticPostFallback(env);
+if (hasDb) {
+  try {
+    dbPosts = await getPublishedPostSummaries(env, 'en');
+  } catch (error) {
+    dbUnavailable = true;
+    console.error(JSON.stringify({
+      event: 'public_content_read_failed',
+      path: Astro.url.pathname,
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  }
+}
+if (dbUnavailable) {
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+  Astro.response.headers.set('Retry-After', '60');
+}
+---
+{dbUnavailable
+  ? <PublicContentUnavailable lang="en" canonicalPath="/en/posts/" />
+  : hasDb
+    ? <DbPostIndexPage lang="en" posts={dbPosts ?? []} />
+    : <PostIndexPage lang="en" />}

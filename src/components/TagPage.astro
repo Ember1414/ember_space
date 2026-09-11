@@ -4,6 +4,7 @@ import { ArrowLeft, Tags } from 'lucide-astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { t, tf, type Lang } from '../i18n/ui';
 import PostCard from './PostCard.astro';
+import '../styles/pages/tag.css';
 
 interface Props { lang: Lang; tag: string; }
 
@@ -38,9 +39,3 @@ const labels = isZh ? { eyebrow: 'TOPIC / 主题归档', empty: '当前主题还
     </div>
   </div>
 </BaseLayout>
-
-<style>
-  .tag-page { width: min(100%, 980px); margin-inline: auto; }
-  .page-intro .eyebrow { display: flex; align-items: center; gap: 7px; }
-  .back-link { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; margin-top: 36px; font-weight: 700; }
-</style>

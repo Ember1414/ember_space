@@ -1,6 +1,7 @@
 const encoder = new TextEncoder();
 
-export const PASSWORD_HASH_ITERATIONS = 210_000;
+// Cloudflare Workers currently rejects PBKDF2 requests above 100,000 iterations.
+export const PASSWORD_HASH_ITERATIONS = 100_000;
 
 function encodeBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -18,14 +19,22 @@ export function randomToken(byteLength = 32): string {
   return encodeBase64(bytes).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
-export function constantTimeEqual(left: string, right: string): boolean {
-  const a = encoder.encode(left);
-  const b = encoder.encode(right);
-  const length = Math.max(a.length, b.length);
-  let mismatch = a.length ^ b.length;
-  for (let index = 0; index < length; index += 1) {
-    mismatch |= (a[index] ?? 0) ^ (b[index] ?? 0);
-  }
+export async function constantTimeEqual(left: string, right: string): Promise<boolean> {
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(left)),
+    crypto.subtle.digest('SHA-256', encoder.encode(right)),
+  ]);
+  const subtle = crypto.subtle as SubtleCrypto & {
+    timingSafeEqual?: (first: ArrayBuffer, second: ArrayBuffer) => boolean;
+  };
+  if (typeof subtle.timingSafeEqual === 'function') return subtle.timingSafeEqual(a, b);
+
+  // Node's Web Crypto does not expose timingSafeEqual yet; both digests have a
+  // fixed public length, so this fallback cannot disclose either input length.
+  const first = new Uint8Array(a);
+  const second = new Uint8Array(b);
+  let mismatch = 0;
+  for (let index = 0; index < first.length; index += 1) mismatch |= first[index] ^ second[index];
   return mismatch === 0;
 }
 
@@ -72,7 +81,7 @@ export async function verifyPassword(password: string, encodedHash: string, enco
 
   try {
     const actual = await hashPassword(password, { salt: decodeBase64(encodedSalt), iterations });
-    return constantTimeEqual(actual.hash, encodedHash);
+    return await constantTimeEqual(actual.hash, encodedHash);
   } catch {
     return false;
   }

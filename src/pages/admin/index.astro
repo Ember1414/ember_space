@@ -1,0 +1,136 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="文章管理">
+  <div class="admin-page" data-dashboard>
+    <header class="admin-page-head">
+      <div><p class="eyebrow">CONTENT / OVERVIEW</p><h1 class="page-title">文章管理</h1><p class="page-sub">管理草稿、发布状态和最近更新。</p></div>
+      <a class="button button--primary" href="/admin/posts/new/">新建文章</a>
+    </header>
+    <div class="admin-message" data-dashboard-message role="status" aria-live="polite">正在连接数据库…</div>
+    <section class="stats-grid" aria-label="内容统计">
+      <article class="stat-card card"><span>全部文章</span><strong data-stat="all">—</strong></article>
+      <article class="stat-card card"><span>已发布</span><strong data-stat="published">—</strong></article>
+      <article class="stat-card card"><span>草稿</span><strong data-stat="draft">—</strong></article>
+      <article class="stat-card card"><span>我的角色</span><strong data-stat="role">—</strong></article>
+    </section>
+    <section class="posts-panel card" aria-labelledby="posts-heading">
+      <div class="panel-head"><h2 id="posts-heading">文章列表</h2><label class="filter-label">筛选 <select data-status-filter><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option><option value="archived">已撤回</option></select></label></div>
+      <div class="table-wrap"><table><thead><tr><th scope="col">标题</th><th scope="col">语言</th><th scope="col">状态</th><th scope="col">更新时间</th><th scope="col"><span class="sr-only">操作</span></th></tr></thead><tbody data-post-rows><tr><td colspan="5" class="table-empty">正在加载…</td></tr></tbody></table></div>
+    </section>
+    <section class="quick-links" aria-label="后台快捷入口"><a class="card quick-link" href="/admin/members/" data-owner-only hidden><span class="eyebrow">ACCESS</span><strong>成员与邀请</strong><span>管理协作者和一次性邀请链接 →</span></a><a class="card quick-link" href="/"><span class="eyebrow">PUBLIC SITE</span><strong>查看网站</strong><span>打开访客首页 →</span></a></section>
+  </div>
+</AdminLayout>
+
+<script>
+  const dashboard = document.querySelector<HTMLElement>('[data-dashboard]');
+  if (dashboard) {
+    interface AdminPostSummary {
+      id?: string;
+      slug?: string;
+      title?: string;
+      lang?: 'zh' | 'en';
+      status?: 'draft' | 'published' | 'archived';
+      draft?: boolean;
+      updatedDate?: string;
+      pubDate?: string;
+      createdAt?: string;
+    }
+
+    const message = dashboard.querySelector<HTMLElement>('[data-dashboard-message]');
+    const rows = dashboard.querySelector<HTMLTableSectionElement>('[data-post-rows]');
+    const filter = dashboard.querySelector('[data-status-filter]') as HTMLSelectElement | null;
+    const stat = (name: string) => dashboard.querySelector<HTMLElement>(`[data-stat="${name}"]`);
+    const setStat = (name: string, value: string) => { const element = stat(name); if (element) element.textContent = value; };
+    let posts: AdminPostSummary[] = [];
+    const asText = (value: unknown) => String(value ?? '');
+    const formatDate = (value?: string) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value).slice(0, 10) : date.toISOString().slice(0, 10); };
+    const statusLabel = (value: string) => value === 'published' ? '已发布' : value === 'archived' ? '已撤回' : '草稿';
+    function render() {
+      if (!rows) return;
+      const selected = filter?.value || 'all';
+      const visible = selected === 'all' ? posts : posts.filter((post) => (post.status || (post.draft ? 'draft' : 'published')) === selected);
+      rows.replaceChildren();
+      if (!visible.length) { const empty = document.createElement('tr'); empty.innerHTML = '<td colspan="5" class="table-empty">没有符合条件的文章。</td>'; rows.appendChild(empty); return; }
+      visible.forEach((post) => {
+        const row = document.createElement('tr');
+        const title = document.createElement('td'); const titleLink = document.createElement('a'); titleLink.href = `/admin/posts/${encodeURIComponent(post.id || post.slug || '')}/`; titleLink.textContent = asText(post.title || '未命名文章'); title.appendChild(titleLink);
+        const lang = document.createElement('td'); lang.textContent = post.lang === 'en' ? 'EN' : 'ZH';
+        const status = document.createElement('td'); const badge = document.createElement('span'); const state = post.status || (post.draft ? 'draft' : 'published'); badge.className = `status-badge status-badge--${state}`; badge.textContent = statusLabel(state); status.appendChild(badge);
+        const date = document.createElement('td'); date.className = 'date-cell'; date.textContent = formatDate(post.updatedDate || post.pubDate || post.createdAt);
+        const action = document.createElement('td'); action.className = 'action-cell'; const edit = document.createElement('a'); edit.className = 'table-action'; edit.href = titleLink.href; edit.textContent = '编辑'; action.appendChild(edit);
+        [title, lang, status, date, action].forEach((cell) => row.appendChild(cell));
+        rows.appendChild(row);
+      });
+    }
+    filter?.addEventListener('change', render);
+    async function load() {
+      try {
+        const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+        if (meResponse.status === 401) { window.location.href = '/admin/login/'; return; }
+        const me = meResponse.ok ? await meResponse.json() as { user?: { role?: string } } : {};
+        const role = me.user?.role;
+        setStat('role', role === 'owner' ? '所有者' : role === 'editor' ? '编辑' : '—');
+        const response = await fetch('/api/posts?all=true', { credentials: 'include' });
+        const data = await response.json().catch(() => ({})) as { posts?: AdminPostSummary[]; items?: AdminPostSummary[]; error?: string | { message?: string }; message?: string } | AdminPostSummary[];
+        if (!response.ok) {
+          const payload = data as { error?: string | { message?: string }; message?: string };
+          throw new Error(typeof payload.error === 'string' ? payload.error : payload.error?.message || payload.message || `读取失败（${response.status}）`);
+        }
+        posts = Array.isArray(data) ? data : (data.posts || data.items || []);
+        const published = posts.filter((post) => (post.status || (post.draft ? 'draft' : 'published')) === 'published').length;
+        const drafts = posts.filter((post) => (post.status || (post.draft ? 'draft' : 'published')) === 'draft').length;
+        setStat('all', String(posts.length));
+        setStat('published', String(published));
+        setStat('draft', String(drafts));
+        if (message) message.textContent = `已连接 · 最近同步 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+        render();
+      } catch (error) {
+        if (message) { message.textContent = error instanceof Error ? error.message : '数据库暂时不可用，请稍后重试。'; message.dataset.kind = 'error'; }
+        if (rows) rows.innerHTML = '<tr><td colspan="5" class="table-empty">暂时无法读取文章。请检查数据库连接后重试。</td></tr>';
+      }
+    }
+    load();
+  }
+</script>
+
+<style>
+  .admin-page-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+  .admin-page-head .page-title { margin: 0; }
+  .admin-page-head .page-sub { margin: 8px 0 0; color: var(--text-muted); }
+  .admin-message { min-height: 1.5em; margin-bottom: 18px; color: var(--text-muted); font-size: 0.86rem; }
+  .admin-message[data-kind='error'] { color: var(--accent-strong); }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat-card { display: grid; gap: 8px; padding: 18px 20px; }
+  .stat-card span { color: var(--text-muted); font-size: 0.78rem; }
+  .stat-card strong { color: var(--text); font-family: var(--font-mono); font-size: 1.7rem; }
+  .posts-panel { overflow: hidden; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .panel-head h2 { margin: 0; font-size: 1.35rem; }
+  .filter-label { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; }
+  .filter-label select { padding: 0.42rem 0.55rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 14px 20px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  th { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+  td:first-child { min-width: 260px; white-space: normal; }
+  td:first-child a { color: var(--text); font-weight: 700; text-decoration: none; }
+  td:first-child a:hover { color: var(--accent-strong); }
+  tr:last-child td { border-bottom: 0; }
+  .date-cell { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.76rem; }
+  .status-badge { display: inline-flex; min-height: 26px; align-items: center; padding: 0.18rem 0.5rem; border: 1px solid var(--border); border-radius: 3px; font-family: var(--font-mono); font-size: 0.68rem; }
+  .status-badge--published { border-color: color-mix(in srgb, var(--success) 60%, var(--border)); color: var(--success); }
+  .status-badge--draft { color: var(--text-muted); }
+  .status-badge--archived { color: var(--accent-strong); }
+  .table-action { color: var(--link); font-size: 0.82rem; font-weight: 700; }
+  .table-empty { padding-block: 34px; color: var(--text-muted); text-align: center; }
+  .quick-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+  .quick-link { display: grid; gap: 4px; padding: 18px 20px; color: var(--text); text-decoration: none; }
+  .quick-link[hidden] { display: none; }
+  .quick-link .eyebrow { margin-bottom: 3px; font-size: 0.66rem; }
+  .quick-link strong { font-family: var(--font-serif); font-size: 1.2rem; }
+  .quick-link span:last-child { color: var(--text-muted); font-size: 0.82rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  @media (max-width: 760px) { .admin-page-head { align-items: start; flex-direction: column; } .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .quick-links { grid-template-columns: 1fr; } .panel-head { align-items: start; flex-direction: column; } }
+</style>

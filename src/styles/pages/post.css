@@ -1,0 +1,261 @@
+:where(.post-layout) .post-header {
+  max-width: var(--reading);
+  margin-bottom: 42px;
+  text-align: left;
+}
+
+:where(.post-layout) .post-back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+:where(.post-layout) .post-back:hover {
+  color: var(--accent-strong);
+}
+
+:where(.post-layout) .post-series {
+  margin: 1.5rem 0 0;
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+:where(.post-layout) .post-header h1 {
+  margin: 0.9rem 0 1rem;
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+}
+
+:where(.post-layout) .post-deck {
+  max-width: 62ch;
+  margin: 0 0 1.25rem;
+  color: var(--text-muted);
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  line-height: 1.7;
+}
+
+:where(.post-layout) .post-meta {
+  justify-content: flex-start;
+}
+
+:where(.post-layout) .post-tags {
+  margin-top: 1.2rem;
+}
+
+:where(.post-layout) .post-cover {
+  overflow: hidden;
+  width: min(100%, var(--reading));
+  margin: 0 0 42px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+}
+
+:where(.post-layout) .post-cover img {
+  width: 100%;
+}
+
+:where(.post-layout) .toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:where(.post-layout) .toc-list ul {
+  margin: 0;
+  padding-left: 14px;
+  list-style: none;
+}
+
+:where(.post-layout) .mobile-toc .toc-list li + li {
+  margin-top: 0.4rem;
+}
+
+:where(.post-layout) .mobile-toc .toc-list a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+:where(.post-layout) .mobile-toc .toc-list a.active {
+  color: var(--accent-strong);
+}
+
+:where(.post-layout) .article-body h2,
+:where(.post-layout) .article-body h3,
+:where(.post-layout) .article-body h4 {
+  position: relative;
+}
+
+:where(.post-layout) .heading-anchor {
+  display: inline-flex;
+  margin-left: 0.45rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72em;
+  opacity: 0;
+  text-decoration: none;
+  transform: translateY(-0.05em);
+}
+
+:where(.post-layout) .article-body :is(h2, h3, h4):hover .heading-anchor,
+:where(.post-layout) .heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+:where(.post-layout) .article-body pre.has-copy-button {
+  padding-top: 3.5rem;
+}
+
+:where(.post-layout) .copy-button {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--code-text) 28%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--code-bg) 88%, transparent);
+  color: var(--code-text);
+  cursor: pointer;
+}
+
+:where(.post-layout) .copy-button:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+:where(.post-layout) .copy-icon--success,
+:where(.post-layout) .copy-icon--error {
+  display: none;
+}
+
+:where(.post-layout) .copy-button[data-state='success'] {
+  color: var(--success);
+}
+
+:where(.post-layout) .copy-button[data-state='success'] .copy-icon--idle,
+:where(.post-layout) .copy-button[data-state='error'] .copy-icon--idle {
+  display: none;
+}
+
+:where(.post-layout) .copy-button[data-state='success'] .copy-icon--success,
+:where(.post-layout) .copy-button[data-state='error'] .copy-icon--error {
+  display: block;
+}
+
+:where(.post-layout) .copy-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:where(.post-layout) .related-posts {
+  margin-top: 72px;
+  padding-top: 30px;
+  border-top: 1px solid var(--border);
+}
+
+:where(.post-layout) .related-posts h2 {
+  margin-bottom: 12px;
+  font-size: 1.45rem;
+}
+
+:where(.post-layout) .related-posts ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:where(.post-layout) .related-posts li {
+  border-top: 1px solid var(--border);
+}
+
+:where(.post-layout) .related-posts li:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+:where(.post-layout) .related-posts a {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+:where(.post-layout) .related-posts a:hover span {
+  color: var(--accent-strong);
+}
+
+:where(.post-layout) .related-posts time {
+  flex: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+:where(.post-layout) .post-nav small {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+:where(.post-layout) .post-nav span {
+  display: block;
+}
+
+:where(.post-layout) .post-nav-link--older {
+  text-align: left;
+}
+
+:where(.post-layout) .post-nav-link--newer {
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  :where(.post-layout) .post-header h1 {
+    font-size: 2.25rem;
+  }
+
+  :where(.post-layout) .post-deck {
+    font-size: 1.02rem;
+  }
+
+  :where(.post-layout) .related-posts a {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    padding-block: 14px;
+  }
+
+  :where(.post-layout) .post-nav-link--newer {
+    text-align: left;
+  }
+
+  :where(.post-layout) .heading-anchor {
+    opacity: 0.62;
+  }
+}

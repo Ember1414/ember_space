@@ -52,6 +52,8 @@ const messages = {
   found: tf(lang, 'search.found', '{count}'),
   noResult: tf(lang, 'search.noResult', '{query}'),
   searching: labels.searching,
+  errorHelp: labels.errorHelp,
+  partial: isZh ? '部分搜索源暂时不可用，以下为当前可用结果。' : 'Some search sources are unavailable; showing the available results.',
   resultPosts: labels.posts,
   resultProjects: labels.projects,
 };
@@ -72,6 +74,8 @@ const messages = {
         type="search"
         id={inputId}
         name="q"
+        minlength="2"
+        maxlength="100"
         placeholder={t(lang, 'search.placeholder')}
         autocomplete="off"
         spellcheck="false"
@@ -106,7 +110,7 @@ const messages = {
       {t(lang, 'search.loading')}
     </p>
     <p class="search-error-help" hidden>
-      {labels.errorHelp}
+      <span class="search-error-message">{labels.errorHelp}</span>
       <a href={postsHref}>{labels.posts}</a>
       <span aria-hidden="true">/</span>
       <a href={projectsHref}>{labels.projects}</a>
@@ -135,13 +139,15 @@ const messages = {
     var results = root.querySelector('.search-results');
     var output = root.querySelector('.search-output');
     var errorHelp = root.querySelector('.search-error-help');
+    var errorMessage = root.querySelector('.search-error-message');
     var pagefind = null;
+    var pagefindPromise = null;
     var availableFilters = {};
     var debounce;
     var searchSequence = 0;
-    var initFailed = false;
+    var activeController = null;
 
-    if (!form || !input || !status || !results || !output || !errorHelp) return;
+    if (!form || !input || !status || !results || !output || !errorHelp || !errorMessage) return;
 
     function format(template, key, value) {
       return String(template).split('{' + key + '}').join(String(value));
@@ -157,11 +163,9 @@ const messages = {
     }
 
     function setUnavailable() {
-      initFailed = true;
-      pagefind = null;
-      searchSequence += 1;
       output.replaceChildren();
       status.textContent = messages.unavailable;
+      errorMessage.textContent = messages.errorHelp;
       errorHelp.hidden = false;
       setBusy(false);
     }
@@ -317,6 +321,50 @@ const messages = {
       return listItem;
     }
 
+    async function postSearch(query, limit, signal) {
+      var url = new URL('/api/search/posts', window.location.origin);
+      url.searchParams.set('q', query);
+      url.searchParams.set('lang', lang);
+      url.searchParams.set('limit', String(limit));
+      var response = await fetch(url, {
+        headers: { accept: 'application/json' },
+        signal: signal,
+      });
+      if (!response.ok) throw new Error('Post search failed');
+      var payload = await response.json();
+      if (!payload || !Array.isArray(payload.results)) throw new Error('Invalid post search response');
+      return payload.results.map(function (item) {
+        return {
+          url: item.url,
+          excerpt: item.excerpt,
+          meta: { title: item.title, type: 'posts', lang: item.lang },
+        };
+      });
+    }
+
+    async function projectSearch(query, limit) {
+      var engine = pagefind || await pagefindPromise;
+      if (!engine) throw new Error('Project search unavailable');
+      var response = await engine.search(query, searchOptions('projects'));
+      var candidates = response.results.slice(0, Math.max(limit * 4, 20));
+      var loaded = await Promise.allSettled(candidates.map(function (result) { return result.data(); }));
+      return loaded
+        .filter(function (entry) { return entry.status === 'fulfilled'; })
+        .map(function (entry) { return entry.value; })
+        .filter(function (item) { return belongsToScope(item, 'projects'); })
+        .slice(0, limit);
+    }
+
+    function interleave(first, second, limit) {
+      var merged = [];
+      var length = Math.max(first.length, second.length);
+      for (var index = 0; index < length && merged.length < limit; index += 1) {
+        if (index < first.length) merged.push(first[index]);
+        if (index < second.length && merged.length < limit) merged.push(second[index]);
+      }
+      return merged;
+    }
+
     function syncUrl(query, scope) {
       try {
         var url = new URL(window.location.href);
@@ -333,33 +381,43 @@ const messages = {
       var query = input.value.trim();
       var scope = currentScope();
       syncUrl(query, scope);
+      if (activeController) activeController.abort();
+      activeController = null;
       output.replaceChildren();
       errorHelp.hidden = true;
 
       if (!query) {
-        status.textContent = pagefind ? messages.ready : messages.loading;
-        setBusy(!pagefind && !initFailed);
-        return;
-      }
-      if (!pagefind) {
-        status.textContent = initFailed ? messages.unavailable : messages.loading;
-        errorHelp.hidden = !initFailed;
+        status.textContent = messages.ready;
+        setBusy(false);
         return;
       }
 
       status.textContent = format(messages.searching, 'query', query);
       setBusy(true);
+      var controller = new AbortController();
+      activeController = controller;
+      var perSourceLimit = scope === 'all' ? 10 : 20;
+      var jobs = [];
+      if (scope !== 'projects') jobs.push({ type: 'posts', promise: postSearch(query, perSourceLimit, controller.signal) });
+      if (scope !== 'posts') jobs.push({ type: 'projects', promise: projectSearch(query, perSourceLimit) });
 
       try {
-        var response = await pagefind.search(query, searchOptions(scope));
+        var settled = await Promise.allSettled(jobs.map(function (job) { return job.promise; }));
         if (sequence !== searchSequence) return;
-        var loaded = await Promise.allSettled(response.results.map(function (result) { return result.data(); }));
-        if (sequence !== searchSequence) return;
+        var successful = settled.filter(function (entry) { return entry.status === 'fulfilled'; });
+        if (successful.length === 0) {
+          setUnavailable();
+          return;
+        }
 
-        var items = loaded
-          .filter(function (entry) { return entry.status === 'fulfilled'; })
-          .map(function (entry) { return entry.value; })
-          .filter(function (item) { return belongsToScope(item, scope); });
+        var posts = [];
+        var projects = [];
+        settled.forEach(function (entry, index) {
+          if (entry.status !== 'fulfilled') return;
+          if (jobs[index].type === 'posts') posts = entry.value;
+          else projects = entry.value;
+        });
+        var items = scope === 'all' ? interleave(posts, projects, 20) : posts.concat(projects).slice(0, 20);
 
         status.textContent = items.length === 0
           ? format(messages.noResult, 'query', query)
@@ -371,9 +429,13 @@ const messages = {
           if (rendered) fragment.appendChild(rendered);
         });
         output.appendChild(fragment);
+        if (successful.length < jobs.length) {
+          errorMessage.textContent = messages.partial;
+          errorHelp.hidden = false;
+        }
         setBusy(false);
       } catch (_error) {
-        if (sequence === searchSequence) setUnavailable();
+        if (sequence === searchSequence && !controller.signal.aborted) setUnavailable();
       }
     }
 
@@ -392,7 +454,7 @@ const messages = {
     function init() {
       initializeFromUrl();
       var pagefindUrl = new URL('/pagefind/pagefind.js', window.location.origin).href;
-      import(pagefindUrl)
+      pagefindPromise = import(pagefindUrl)
         .then(async function (module) {
           pagefind = module;
           await pagefind.options({ excerptLength: 30 });
@@ -400,11 +462,15 @@ const messages = {
           if (typeof pagefind.filters === 'function') {
             try { availableFilters = (await pagefind.filters()) || {}; } catch (_error) { availableFilters = {}; }
           }
-          status.textContent = messages.ready;
-          setBusy(false);
-          run();
+          return pagefind;
         })
-        .catch(setUnavailable);
+        .catch(function () { return null; });
+
+      if (input.value.trim()) run();
+      else {
+        status.textContent = messages.ready;
+        setBusy(false);
+      }
     }
 
     form.addEventListener('submit', function (event) {

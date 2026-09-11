@@ -1,0 +1,22 @@
+---
+import type { PostSummary } from '../lib/db';
+import type { Lang } from '../i18n/ui';
+
+interface Props { post: PostSummary; lang?: Lang; headingLevel?: 2 | 3; }
+const { post, lang = 'zh', headingLevel = 3 } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const minutes = Math.max(1, Math.round(post.bodyLength / 400));
+const date = post.pubDate.slice(0, 10);
+---
+<li class="post-item">
+  <time class="post-item-date" datetime={post.pubDate}>{date}</time>
+  <div>
+    <Heading class="post-item-title"><a href={`${base}/posts/${post.slug}/`}>{post.title}</a></Heading>
+    <p class="post-item-desc">{post.description}</p>
+  </div>
+  <div class="post-item-meta post-item-meta--stacked">
+    <span>{lang === 'zh' ? `约 ${minutes} 分钟` : `${minutes} min`}</span>
+    {post.tags.slice(0, 2).map((tag) => <a class="tag" href={`${base}/tags/${encodeURIComponent(tag)}/`}>{tag}</a>)}
+  </div>
+</li>

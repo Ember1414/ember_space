@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { normalizeAccount } from '../../../lib/auth/account';
 import { randomToken, sha256 } from '../../../lib/auth/crypto';
 import { authorizeRead, authorizeWrite, errorResponse, json, readJsonObject } from '../../../lib/auth/http';
 
@@ -35,7 +36,7 @@ export const POST: APIRoute = async (context) => {
     if (auth instanceof Response) return auth;
     const body = await readJsonObject(context.request);
     if (!body) return errorResponse(400, '请求格式无效。');
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const email = normalizeAccount(body.email);
     const expiresIn = Number(body.expiresIn ?? 604_800);
     if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) {
       return errorResponse(400, '邀请邮箱格式无效。');
@@ -65,4 +66,3 @@ export const POST: APIRoute = async (context) => {
     return errorResponse(500, '邀请创建失败，请稍后重试。');
   }
 };
-

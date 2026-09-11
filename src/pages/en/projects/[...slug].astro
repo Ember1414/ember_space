@@ -4,6 +4,8 @@ import type { CollectionEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ProjectPage from '../../../templates/ProjectPage.astro';
 
+export const prerender = true;
+
 interface Props {
   project: CollectionEntry<'projects'>;
 }

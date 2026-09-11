@@ -1,0 +1,245 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="成员与邀请">
+  <div class="admin-page" data-members-page>
+    <header class="admin-page-head"><div><p class="eyebrow">ACCESS / TEAM</p><h1 class="page-title">成员与邀请</h1><p class="page-sub">邀请协作者并管理现有成员。只有所有者可以访问此页面。</p></div><a class="button button--secondary" href="/admin/">返回文章</a></header>
+    <div class="admin-message" data-members-message role="status" aria-live="polite">正在检查权限…</div>
+    <div class="members-grid">
+      <section class="card members-panel" aria-labelledby="invite-title">
+        <div class="panel-head"><h2 id="invite-title">生成邀请链接</h2></div>
+        <form class="invite-form" data-invite-form>
+          <div class="field"><label for="invite-email">对方邮箱（可选）</label><input id="invite-email" name="email" type="email" autocomplete="email" placeholder="editor@example.com" /></div>
+          <div class="field"><label for="invite-expiry">有效期</label><select id="invite-expiry" name="expiresIn"><option value="86400">24 小时</option><option value="604800" selected>7 天</option><option value="2592000">30 天</option></select></div>
+          <button class="button button--primary" type="submit">生成一次性链接</button>
+        </form>
+        <div class="invite-result" data-invite-result hidden><p>邀请链接已生成，请安全地分享给协作者：</p><div class="invite-link-row"><code data-invite-link></code><button class="button button--secondary" type="button" data-copy-invite>复制</button></div><small>链接只能使用一次，过期后自动失效。</small></div>
+      </section>
+      <section class="card members-panel" aria-labelledby="members-title">
+        <div class="panel-head"><h2 id="members-title">现有成员</h2></div>
+        <ul class="member-list" data-member-list><li class="table-empty">正在加载…</li></ul>
+      </section>
+    </div>
+    <section class="card invites-history" aria-labelledby="invites-title"><div class="panel-head"><h2 id="invites-title">最近邀请</h2></div><div class="table-wrap"><table><thead><tr><th>邮箱</th><th>状态</th><th>有效期</th></tr></thead><tbody data-invite-list><tr><td colspan="3" class="table-empty">正在加载…</td></tr></tbody></table></div></section>
+  </div>
+</AdminLayout>
+
+<script>
+  const page = document.querySelector<HTMLElement>('[data-members-page]');
+  if (page) {
+    interface AdminMember {
+      id: string;
+      username?: string;
+      email?: string;
+      displayName?: string;
+      role?: 'owner' | 'editor';
+      status?: 'active' | 'suspended';
+      active?: boolean;
+      createdAt?: string;
+    }
+
+    interface AdminInvite {
+      id?: string;
+      email?: string;
+      token?: string;
+      url?: string;
+      status?: string;
+      usedAt?: string | null;
+      expiresAt?: string;
+    }
+
+    interface ApiError {
+      error?: string | { message?: string };
+      message?: string;
+    }
+
+    const message = page.querySelector<HTMLElement>('[data-members-message]');
+    const memberList = page.querySelector<HTMLUListElement>('[data-member-list]');
+    const inviteList = page.querySelector<HTMLTableSectionElement>('[data-invite-list]');
+    const inviteForm = page.querySelector<HTMLFormElement>('[data-invite-form]');
+    const inviteResult = page.querySelector<HTMLElement>('[data-invite-result]');
+    const inviteLink = page.querySelector<HTMLElement>('[data-invite-link]');
+    let csrfToken = '';
+    const setMessage = (text: string, kind = '') => { if (message) { message.textContent = text; message.dataset.kind = kind; } };
+    const date = (value?: string) => { if (!value) return '—'; const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? String(value).slice(0, 10) : parsed.toISOString().slice(0, 10); };
+    const inviteStatus = (invite: AdminInvite) => invite.usedAt || invite.status === 'used' ? '已使用' : (invite.status === 'expired' || (invite.expiresAt && new Date(invite.expiresAt) < new Date()) ? '已过期' : '待使用');
+    const errorMessage = (data: ApiError, fallback: string) => typeof data.error === 'string' ? data.error : data.error?.message || data.message || fallback;
+
+    function renderMembers(members: AdminMember[]) {
+      if (!memberList) return;
+      memberList.replaceChildren();
+      if (!members.length) {
+        const item = document.createElement('li');
+        item.className = 'table-empty';
+        item.textContent = '暂无成员记录。';
+        memberList.appendChild(item);
+        return;
+      }
+      members.forEach((member) => {
+        const item = document.createElement('li');
+        item.className = 'member-row';
+        const identity = document.createElement('div');
+        identity.className = 'member-identity';
+        const name = document.createElement('strong');
+        name.textContent = member.displayName || member.username || member.email || '未命名成员';
+        const meta = document.createElement('small');
+        const state = member.status || (member.active === false ? 'suspended' : 'active');
+        meta.textContent = `${member.role === 'owner' ? '所有者' : '编辑'} · ${state === 'suspended' ? '已暂停' : '正常'} · 加入于 ${date(member.createdAt)}`;
+        identity.appendChild(name);
+        identity.appendChild(meta);
+        item.appendChild(identity);
+        if (member.role !== 'owner') {
+          const actions = document.createElement('div');
+          actions.className = 'member-actions';
+          const toggle = document.createElement('button');
+          toggle.type = 'button';
+          toggle.className = 'member-action';
+          toggle.dataset.memberId = member.id;
+          toggle.dataset.memberAction = state === 'suspended' ? 'activate' : 'suspend';
+          toggle.textContent = state === 'suspended' ? '恢复' : '暂停';
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'member-action member-action--danger';
+          remove.dataset.memberId = member.id;
+          remove.dataset.memberAction = 'delete';
+          remove.textContent = '删除';
+          actions.appendChild(toggle);
+          actions.appendChild(remove);
+          item.appendChild(actions);
+        }
+        memberList.appendChild(item);
+      });
+    }
+
+    function renderInvites(invites: AdminInvite[]) {
+      if (!inviteList) return;
+      inviteList.replaceChildren();
+      if (!invites.length) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="3" class="table-empty">暂无邀请记录。</td>';
+        inviteList.appendChild(row);
+        return;
+      }
+      invites.slice(0, 20).forEach((invite) => {
+        const row = document.createElement('tr');
+        [invite.email || '未指定邮箱', inviteStatus(invite), date(invite.expiresAt)].forEach((value) => {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+        inviteList.appendChild(row);
+      });
+    }
+
+    async function load() {
+      try {
+        const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+        if (meResponse.status === 401) { window.location.href = '/admin/login/'; return; }
+        const me = meResponse.ok ? await meResponse.json() as { user?: AdminMember; csrfToken?: string; csrf?: string } : {};
+        const user = me.user;
+        csrfToken = me.csrfToken || me.csrf || '';
+        if (!user || user.role !== 'owner') { setMessage('只有所有者可以管理成员。', 'error'); inviteForm?.remove(); return; }
+        const [membersResponse, invitesResponse] = await Promise.all([fetch('/api/members', { credentials: 'include' }), fetch('/api/invites', { credentials: 'include' })]);
+        const membersData = await membersResponse.json().catch(() => ({})) as { members?: AdminMember[] } & ApiError;
+        const invitesData = await invitesResponse.json().catch(() => ({})) as { invites?: AdminInvite[] } & ApiError;
+        if (!membersResponse.ok) throw new Error(errorMessage(membersData, '成员列表读取失败。'));
+        if (!invitesResponse.ok) throw new Error(errorMessage(invitesData, '邀请记录读取失败。'));
+        renderMembers(membersData.members || []);
+        renderInvites(invitesData.invites || []);
+        setMessage('权限验证通过。');
+      } catch (error) { setMessage(error instanceof Error ? error.message : '成员数据暂时不可用。', 'error'); }
+    }
+
+    inviteForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = inviteForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (button) button.disabled = true;
+      setMessage('正在生成邀请…');
+      const body = Object.fromEntries(new FormData(inviteForm).entries());
+      try {
+        const response = await fetch('/api/invites', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) }, body: JSON.stringify(body) });
+        const data = await response.json().catch(() => ({})) as { invite?: AdminInvite; url?: string; inviteUrl?: string; token?: string } & ApiError;
+        if (!response.ok) throw new Error(errorMessage(data, '生成邀请失败。'));
+        const generated = data.invite || data;
+        const token = generated.url || data.url || data.inviteUrl || `${window.location.origin}/admin/invite/${generated.token || data.token || ''}/`;
+        if (inviteLink) inviteLink.textContent = token;
+        if (inviteResult) inviteResult.hidden = false;
+        setMessage('邀请链接已生成。', 'success');
+        await load();
+      } catch (error) { setMessage(error instanceof Error ? error.message : '生成邀请失败。', 'error'); }
+      finally { if (button) button.disabled = false; }
+    });
+
+    memberList?.addEventListener('click', async (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-member-action]');
+      const id = button?.dataset.memberId;
+      const action = button?.dataset.memberAction;
+      if (!button || !id || !action) return;
+      if (action === 'delete' && !window.confirm('确定删除这个协作者账号吗？')) return;
+      button.disabled = true;
+      try {
+        const response = await fetch(`/api/members/${encodeURIComponent(id)}`, {
+          method: action === 'delete' ? 'DELETE' : 'PATCH',
+          credentials: 'include',
+          headers: { ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}), ...(action === 'delete' ? {} : { 'content-type': 'application/json' }) },
+          body: action === 'delete' ? undefined : JSON.stringify({ status: action === 'activate' ? 'active' : 'suspended' }),
+        });
+        const data = await response.json().catch(() => ({})) as ApiError;
+        if (!response.ok) throw new Error(errorMessage(data, '成员操作失败。'));
+        setMessage(action === 'delete' ? '成员已删除。' : '成员状态已更新。', 'success');
+        await load();
+      } catch (error) {
+        button.disabled = false;
+        setMessage(error instanceof Error ? error.message : '成员操作失败。', 'error');
+      }
+    });
+
+    page.querySelector<HTMLButtonElement>('[data-copy-invite]')?.addEventListener('click', async () => { const value = inviteLink?.textContent || ''; try { await navigator.clipboard.writeText(value); setMessage('邀请链接已复制。', 'success'); } catch { setMessage(value, 'success'); } });
+    load();
+  }
+</script>
+
+<style>
+  .admin-page-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+  .admin-page-head .page-title { margin: 0; }
+  .admin-page-head .page-sub { margin: 8px 0 0; color: var(--text-muted); }
+  .admin-message { min-height: 1.5em; margin-bottom: 18px; color: var(--text-muted); font-size: 0.86rem; }
+  .admin-message[data-kind='error'] { color: var(--accent-strong); }
+  .admin-message[data-kind='success'] { color: var(--success); }
+  .members-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .members-panel { overflow: hidden; }
+  .panel-head { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .panel-head h2 { margin: 0; font-size: 1.3rem; }
+  .invite-form { display: grid; gap: 16px; padding: 20px; }
+  .field { display: grid; gap: 6px; }
+  .field label { color: var(--text-soft); font-size: 0.82rem; font-weight: 750; }
+  .field input, .field select { width: 100%; padding: 0.65rem 0.72rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .invite-result { margin: 0 20px 20px; padding: 14px; border: 1px solid color-mix(in srgb, var(--success) 50%, var(--border)); border-radius: 4px; background: color-mix(in srgb, var(--success) 8%, var(--surface)); }
+  .invite-result p { margin: 0 0 10px; font-size: 0.84rem; }
+  .invite-result small { display: block; margin-top: 8px; color: var(--text-muted); font-size: 0.72rem; }
+  .invite-link-row { display: flex; align-items: stretch; gap: 8px; }
+  .invite-link-row code { min-width: 0; flex: 1; overflow-wrap: anywhere; padding: 0.56rem; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); font-size: 0.72rem; }
+  .invite-link-row .button { min-height: 38px; padding-inline: 0.7rem; }
+  .member-list { margin: 0; padding: 0; list-style: none; }
+  .member-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .member-row:last-child { border-bottom: 0; }
+  .member-row strong, .member-row small { display: block; }
+  .member-row strong { font-size: 0.9rem; }
+  .member-row small { color: var(--text-muted); font-size: 0.74rem; }
+  .member-identity { min-width: 0; }
+  .member-actions { display: flex; flex: 0 0 auto; gap: 6px; }
+  .member-action { min-height: 34px; padding: 0.28rem 0.55rem; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text-soft); font-size: 0.76rem; font-weight: 700; cursor: pointer; }
+  .member-action:hover { border-color: var(--accent); color: var(--accent-strong); }
+  .member-action--danger { color: var(--accent-strong); }
+  .invites-history { overflow: hidden; margin-top: 16px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 13px 20px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.82rem; }
+  th { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; }
+  tr:last-child td { border-bottom: 0; }
+  td:nth-child(2) { color: var(--text-muted); }
+  td:nth-child(3) { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.74rem; }
+  .table-empty { padding-block: 28px; color: var(--text-muted); text-align: center; }
+  @media (max-width: 760px) { .admin-page-head { align-items: start; flex-direction: column; } .members-grid { grid-template-columns: 1fr; } }
+</style>

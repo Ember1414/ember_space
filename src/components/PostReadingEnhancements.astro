@@ -1,0 +1,137 @@
+---
+import { Check, CircleX, Copy } from 'lucide-astro';
+import { t, type Lang } from '../i18n/ui';
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+---
+<template data-copy-button-template>
+  <button
+    class="copy-button"
+    type="button"
+    aria-label={t(lang, 'post.copy')}
+    title={t(lang, 'post.copy')}
+    data-label-copy={t(lang, 'post.copy')}
+    data-label-copied={t(lang, 'post.copied')}
+    data-label-failed={t(lang, 'post.copyFailed')}
+  >
+    <span class="copy-icon copy-icon--idle" aria-hidden="true"><Copy size={17} stroke-width={1.8} /></span>
+    <span class="copy-icon copy-icon--success" aria-hidden="true"><Check size={17} stroke-width={2} /></span>
+    <span class="copy-icon copy-icon--error" aria-hidden="true"><CircleX size={17} stroke-width={1.8} /></span>
+    <span class="copy-live" aria-live="polite"></span>
+  </button>
+</template>
+
+<script>
+  function initializePostReading() {
+    const articleBody = document.querySelector<HTMLElement>('[data-article-body]');
+    const progress = document.querySelector<HTMLElement>('[data-reading-progress]');
+    const copyTemplate = document.querySelector<HTMLTemplateElement>('[data-copy-button-template]');
+
+    if (articleBody) {
+      const headingLabel = articleBody.dataset.headingLinkLabel ?? '';
+      articleBody.querySelectorAll<HTMLElement>('h2[id], h3[id], h4[id]').forEach((heading) => {
+        if (heading.querySelector(':scope > .heading-anchor')) return;
+        const anchor = document.createElement('a');
+        anchor.className = 'heading-anchor';
+        anchor.href = `#${encodeURIComponent(heading.id)}`;
+        anchor.textContent = '#';
+        anchor.setAttribute('aria-label', `${headingLabel}${heading.textContent?.trim() ?? ''}`);
+        heading.appendChild(anchor);
+      });
+
+      if (copyTemplate && navigator.clipboard?.writeText) {
+        articleBody.querySelectorAll<HTMLPreElement>('pre').forEach((pre) => {
+          if (pre.querySelector(':scope > .copy-button')) return;
+          const code = pre.querySelector('code');
+          const button = copyTemplate.content.firstElementChild?.cloneNode(true);
+          if (!code || !(button instanceof HTMLButtonElement)) return;
+
+          pre.classList.add('has-copy-button');
+          pre.appendChild(button);
+          let resetTimer = 0;
+
+          button.addEventListener('click', async () => {
+            const copyLabel = button.dataset.labelCopy ?? '';
+            const copiedLabel = button.dataset.labelCopied ?? '';
+            const failedLabel = button.dataset.labelFailed ?? '';
+            const live = button.querySelector<HTMLElement>('.copy-live');
+            window.clearTimeout(resetTimer);
+
+            try {
+              await navigator.clipboard.writeText(code.textContent ?? '');
+              button.dataset.state = 'success';
+              button.setAttribute('aria-label', copiedLabel);
+              button.title = copiedLabel;
+              if (live) live.textContent = copiedLabel;
+            } catch {
+              button.dataset.state = 'error';
+              button.setAttribute('aria-label', failedLabel);
+              button.title = failedLabel;
+              if (live) live.textContent = failedLabel;
+            }
+
+            resetTimer = window.setTimeout(() => {
+              button.dataset.state = '';
+              button.setAttribute('aria-label', copyLabel);
+              button.title = copyLabel;
+              if (live) live.textContent = '';
+            }, 2200);
+          });
+        });
+      }
+    }
+
+    const tocLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]'));
+    const sectionHeadings = Array.from(
+      new Set(
+        tocLinks
+          .map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))))
+          .filter((heading): heading is HTMLElement => heading instanceof HTMLElement),
+      ),
+    );
+
+    let ticking = false;
+    const updateReadingState = () => {
+      ticking = false;
+
+      if (progress && articleBody) {
+        const top = articleBody.getBoundingClientRect().top + window.scrollY;
+        const bottom = top + articleBody.offsetHeight;
+        const start = top - Math.min(140, window.innerHeight * 0.2);
+        const finish = Math.max(start + 1, bottom - window.innerHeight * 0.72);
+        const amount = Math.min(1, Math.max(0, (window.scrollY - start) / (finish - start)));
+        const percentage = Math.round(amount * 100);
+        progress.style.width = `${percentage}%`;
+        progress.setAttribute('aria-valuenow', String(percentage));
+        progress.setAttribute('aria-valuetext', `${percentage}%`);
+      }
+
+      if (sectionHeadings.length > 0) {
+        const threshold = window.scrollY + 130;
+        let active = sectionHeadings[0];
+        for (const heading of sectionHeadings) {
+          if (heading.offsetTop <= threshold) active = heading;
+        }
+        tocLinks.forEach((link) => {
+          const isActive = decodeURIComponent(link.hash.slice(1)) === active.id;
+          link.classList.toggle('active', isActive);
+          if (isActive) link.setAttribute('aria-current', 'location');
+          else link.removeAttribute('aria-current');
+        });
+      }
+    };
+
+    const queueReadingUpdate = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateReadingState);
+    };
+
+    window.addEventListener('scroll', queueReadingUpdate, { passive: true });
+    window.addEventListener('resize', queueReadingUpdate, { passive: true });
+    updateReadingState();
+  }
+
+  initializePostReading();
+</script>

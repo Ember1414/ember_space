@@ -1,0 +1,16 @@
+---
+import { ArrowLeft, Tags } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DbPostCard from './DbPostCard.astro';
+import type { PostSummary } from '../lib/db';
+import { t, tf, type Lang } from '../i18n/ui';
+import '../styles/pages/tag.css';
+
+interface Props { lang: Lang; tag: string; posts: PostSummary[]; alternatePath: string | null; }
+const { lang, tag, posts, alternatePath } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+const title = tf(lang, 'tag.title', tag);
+---
+<BaseLayout lang={lang} title={title} description={`${title} · ${tf(lang, 'tag.count', posts.length)}`} canonicalPath={`${base}/tags/${encodeURIComponent(tag)}/`} alternatePath={alternatePath}>
+  <div class="tag-page" data-pagefind-body data-pagefind-filter={`lang:${lang}`}><header class="page-intro anim"><p class="eyebrow"><Tags size={15} aria-hidden="true" /> {lang === 'zh' ? 'TOPIC / 主题归档' : 'TOPIC / ARCHIVE'}</p><h1 class="page-title">{title}</h1><p class="page-sub">{tf(lang, 'tag.count', posts.length)}</p></header>{posts.length > 0 ? <ol class="post-list anim">{posts.map((post) => <DbPostCard post={post} lang={lang} headingLevel={2} />)}</ol> : <div class="empty-state anim"><h2>{title}</h2><p>{lang === 'zh' ? '当前主题还没有已发布文章。' : 'No published English post uses this topic yet.'}</p></div>}<a class="back-link" href={`${base}/posts/`}><ArrowLeft size={17} aria-hidden="true" />{t(lang, 'tag.back')}</a></div>
+</BaseLayout>

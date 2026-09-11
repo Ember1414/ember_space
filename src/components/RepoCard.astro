@@ -1,7 +1,8 @@
 ---
-import { ArrowUpRight, Star } from 'lucide-astro';
+import { ArrowUpRight, Github, Star } from 'lucide-astro';
 import type { Repo } from '../lib/github';
 import { t, type Lang } from '../i18n/ui';
+import { formatRepositoryDate } from '../lib/github';
 
 interface Props {
   repo: Repo;
@@ -9,30 +10,107 @@ interface Props {
 }
 
 const { repo, lang = 'zh' } = Astro.props;
+const updatedDate = formatRepositoryDate(repo.pushed_at);
 ---
 
-<article class="repo-item">
-  <div class="repo-item-main">
+<article class="card project-card repo-card">
+  <div class="card-media repo-fallback">
+    <span class="repo-date">
+      <small>{lang === 'zh' ? '更新于' : 'Updated'}</small>
+      {updatedDate ? <time datetime={repo.pushed_at}>{updatedDate}</time> : <span>—</span>}
+    </span>
+    <span aria-hidden="true">{repo.language ?? 'OPEN SOURCE'}</span>
+  </div>
+  <div class="card-body">
+    <div class="project-kicker">
+      <span>{lang === 'zh' ? '公开仓库' : 'Public repository'}</span>
+      <span class="repo-star"><Star size={13} aria-hidden="true" /> {repo.stargazers_count}</span>
+    </div>
     <h3><a href={repo.homepage || repo.html_url} target="_blank" rel="noopener">{repo.name}</a></h3>
     <p>{repo.description || t(lang, 'projects.repoFallback')}</p>
-    <div class="post-item-meta">
-      {repo.language && <span>{repo.language}</span>}
-      {repo.stargazers_count > 0 && <span class="repo-star"><Star size={13} aria-hidden="true" /> {repo.stargazers_count}</span>}
+    {repo.language && <ul class="tag-list"><li><span class="tag">{repo.language}</span></li></ul>}
+    <div class="project-links">
+      {repo.homepage && <a href={repo.homepage} target="_blank" rel="noopener">{t(lang, 'projects.visit')} <ArrowUpRight size={15} aria-hidden="true" /></a>}
+      <a href={repo.html_url} target="_blank" rel="noopener"><Github size={15} aria-hidden="true" /> {t(lang, 'projects.source')}</a>
     </div>
   </div>
-  <a class="repo-item-icon" href={repo.html_url} target="_blank" rel="noopener" aria-label={`${repo.name} GitHub`}>
-    <ArrowUpRight size={20} aria-hidden="true" />
-  </a>
 </article>
 
 <style>
+  .project-card {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+  }
+
+  .repo-fallback {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 24px;
+    background:
+      linear-gradient(90deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%),
+      linear-gradient(0deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%),
+      var(--surface-soft);
+    background-size: 42px 42px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .repo-date {
+    display: grid;
+    gap: 4px;
+    color: var(--accent);
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .repo-date small {
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .repo-card .card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .project-kicker {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+
   .repo-star {
     display: inline-flex;
     align-items: center;
     gap: 4px;
   }
 
-  .repo-item .post-item-meta {
-    margin-top: 8px;
+  .project-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: auto;
+    padding-top: 20px;
+  }
+
+  .project-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.84rem;
+    font-weight: 700;
   }
 </style>

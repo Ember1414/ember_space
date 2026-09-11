@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { normalizeAccount } from '../../../../lib/auth/account';
 import { hashPassword, sha256 } from '../../../../lib/auth/crypto';
 import { canConsumeInvite } from '../../../../lib/auth/invites';
 import { errorResponse, getRuntime, json, readJsonObject, trustedRequestOrigin } from '../../../../lib/auth/http';
@@ -22,7 +23,7 @@ export const POST: APIRoute = async (context) => {
     if (!token || token.length > 256) return errorResponse(404, '邀请无效、已使用或已过期。');
     const body = await readJsonObject(context.request);
     if (!body) return errorResponse(400, '请求格式无效。');
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const email = normalizeAccount(body.email);
     const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
     const password = typeof body.password === 'string' ? body.password : '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return errorResponse(400, '邮箱格式无效。');
@@ -36,7 +37,7 @@ export const POST: APIRoute = async (context) => {
     ).bind(tokenHash).first<InviteRow>();
     const now = new Date();
     if (!invite || !canConsumeInvite(invite, now)) return errorResponse(410, '邀请无效、已使用或已过期。');
-    if (invite.email && invite.email.toLowerCase() !== email) return errorResponse(403, '请使用邀请指定的邮箱。');
+    if (invite.email && normalizeAccount(invite.email) !== email) return errorResponse(403, '请使用邀请指定的邮箱。');
 
     const id = crypto.randomUUID();
     const timestamp = now.toISOString();
@@ -65,4 +66,3 @@ export const POST: APIRoute = async (context) => {
     return errorResponse(500, '账号创建失败，请稍后重试。');
   }
 };
-

@@ -3,6 +3,7 @@ import { Image } from 'astro:assets';
 import { render, type CollectionEntry } from 'astro:content';
 import { ArrowLeft, ArrowUpRight, Github } from 'lucide-astro';
 import { t, type Lang } from '../i18n/ui';
+import { formatRepositoryDate, getGitHubRepos, repositoryUrlKey } from '../lib/github';
 
 interface Props {
   project: CollectionEntry<'projects'>;
@@ -13,6 +14,11 @@ const { project, lang } = Astro.props;
 const { Content } = await render(project);
 const data = project.data;
 const base = lang === 'en' ? '/en' : '';
+const repositoryKey = repositoryUrlKey(data.repo);
+const repository = repositoryKey
+  ? (await getGitHubRepos()).find((repo) => repositoryUrlKey(repo.html_url) === repositoryKey)
+  : undefined;
+const updatedDate = formatRepositoryDate(repository?.pushed_at);
 ---
 
 <article class="project-detail" data-pagefind-body data-pagefind-filter={`lang:${lang}`} data-pagefind-meta={`lang:${lang}`}>
@@ -23,13 +29,18 @@ const base = lang === 'en' ? '/en' : '';
     </a>
 
     <header class="project-header anim">
-      <p class="eyebrow">PROJECT / CASE STUDY</p>
+      <p class="eyebrow">PROJECT / DETAILS</p>
       <div class="project-heading">
         <div>
           <h1>{data.name}</h1>
           <p>{data.description}</p>
         </div>
-        <p class="project-year">{data.year}</p>
+        <p class="project-date">
+          <span>{updatedDate ? (lang === 'zh' ? '更新于' : 'Updated') : (lang === 'zh' ? '年份' : 'Year')}</span>
+          {updatedDate && repository
+            ? <time datetime={repository.pushed_at}>{updatedDate}</time>
+            : <span>{data.year}</span>}
+        </p>
       </div>
       <ul class="tag-list" aria-label="Project topics">
         {data.tags.map((tag) => <li><span class="tag">{tag}</span></li>)}
@@ -41,9 +52,14 @@ const base = lang === 'en' ? '/en' : '';
         <Image src={data.image} alt={data.imageAlt ?? ''} widths={[760, 1120, 1600]} sizes="(max-width: 760px) 100vw, min(100vw - 48px, 1040px)" />
       </div>
     ) : (
-      <div class="project-cover project-cover--fallback anim" aria-hidden="true">
-        <span>{data.tags[0] ?? 'PROJECT'}</span>
-        <strong>{String(data.year).slice(-2)}</strong>
+      <div class="project-cover project-cover--fallback anim">
+        <span aria-hidden="true">{data.tags[0] ?? 'PROJECT'}</span>
+        <span class="project-cover-date">
+          <small>{updatedDate ? (lang === 'zh' ? '更新于' : 'Updated') : (lang === 'zh' ? '年份' : 'Year')}</small>
+          {updatedDate && repository
+            ? <time datetime={repository.pushed_at}>{updatedDate}</time>
+            : <span>{data.year}</span>}
+        </span>
       </div>
     )}
 
@@ -91,12 +107,14 @@ const base = lang === 'en' ? '/en' : '';
   .project-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
   .project-heading h1 { max-width: 18ch; margin: 0.35rem 0 0.8rem; font-size: clamp(2.25rem, 5vw, 4rem); line-height: 1.05; }
   .project-heading > div > p { max-width: 60ch; margin: 0; color: var(--text-muted); font-size: 1.08rem; line-height: 1.75; }
-  .project-year { flex: none; margin: 0 0 0.8rem; color: var(--accent); font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; }
+  .project-date { display: grid; flex: none; gap: 2px; margin: 0 0 0.8rem; color: var(--accent); font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700; }
+  .project-date > span:first-child { color: var(--text-muted); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; }
   .project-header .tag-list { margin-top: 24px; }
   .project-cover { overflow: hidden; margin-bottom: 54px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-strong); }
   .project-cover :global(img) { display: block; width: 100%; height: auto; }
   .project-cover--fallback { display: flex; aspect-ratio: 16 / 7; align-items: flex-end; justify-content: space-between; padding: clamp(24px, 5vw, 56px); background: linear-gradient(90deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%), linear-gradient(0deg, transparent 49.8%, color-mix(in srgb, var(--border) 80%, transparent) 50%, transparent 50.2%), var(--surface-soft); background-size: 52px 52px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.82rem; }
-  .project-cover--fallback strong { color: var(--accent); font-size: clamp(4.5rem, 12vw, 9rem); line-height: 0.75; }
+  .project-cover-date { display: grid; gap: 5px; color: var(--accent); font-size: 1.05rem; font-weight: 700; line-height: 1.15; }
+  .project-cover-date small { color: var(--text-muted); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; }
   .project-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 0.35fr); gap: clamp(42px, 8vw, 96px); align-items: start; }
   .project-prose { width: auto; }
   .project-aside { padding-left: 26px; border-left: 1px solid var(--border); }
@@ -113,7 +131,7 @@ const base = lang === 'en' ? '/en' : '';
   @media (max-width: 760px) {
     .project-back { margin-bottom: 26px; }
     .project-heading { display: block; }
-    .project-year { margin-top: 20px; }
+    .project-date { margin-top: 20px; }
     .project-cover { margin-bottom: 42px; }
     .project-cover--fallback { aspect-ratio: 16 / 9; }
     .project-layout { grid-template-columns: 1fr; gap: 44px; }

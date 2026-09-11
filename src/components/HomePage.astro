@@ -9,6 +9,7 @@ import Hero from './Hero.astro';
 import PostCard from './PostCard.astro';
 import ProjectCard from './ProjectCard.astro';
 import RepoCard from './RepoCard.astro';
+import '../styles/pages/home.css';
 
 interface Props {
   lang: Lang;
@@ -40,15 +41,15 @@ const empty = isZh
   ? {
       postsTitle: '文章正在整理中',
       postsText: '这里会展示经过整理的工程笔记与实践记录。',
-      projectsTitle: '项目案例正在整理中',
+      projectsTitle: '项目正在整理中',
       projectsText: '这里会展示有公开依据的项目背景、职责与实现亮点。',
       archiveLink: '浏览中文内容',
     }
   : {
       postsTitle: 'English writing is in progress',
       postsText: 'No English post has been published yet. The Chinese archive is available now.',
-      projectsTitle: 'English case studies are in progress',
-      projectsText: 'No project case study has an English edition yet. Public repositories remain available below.',
+      projectsTitle: 'English projects are in progress',
+      projectsText: 'No detailed English project is available yet. Public repositories remain available below.',
       archiveLink: 'Browse the Chinese site',
     };
 ---
@@ -183,108 +184,3 @@ const empty = isZh
     </section>
   </div>
 </BaseLayout>
-
-<style>
-  .home-focus {
-    background: var(--bg);
-  }
-
-  .home-focus .section-head {
-    align-items: start;
-  }
-
-  .feature-grid > div {
-    min-width: 0;
-  }
-
-  .feature-post,
-  .featured-project,
-  .home-empty {
-    height: 100%;
-  }
-
-  .featured-project :global(.project-card) {
-    height: 100%;
-  }
-
-  .feature-post-fallback {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    padding: 24px;
-    background: var(--surface-strong);
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-  }
-
-  .feature-post-fallback::before,
-  .feature-post-fallback::after {
-    position: absolute;
-    background: var(--border-strong);
-    content: '';
-  }
-
-  .feature-post-fallback::before {
-    top: 22%;
-    right: 24px;
-    bottom: 24px;
-    width: 1px;
-  }
-
-  .feature-post-fallback::after {
-    right: 24px;
-    bottom: 24px;
-    left: 22%;
-    height: 1px;
-  }
-
-  .feature-post-fallback strong {
-    position: relative;
-    color: var(--accent);
-    font-size: 2.7rem;
-    line-height: 0.8;
-  }
-
-  .feature-label {
-    margin-bottom: 10px !important;
-    color: var(--accent) !important;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .feature-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 16px;
-    margin-bottom: 14px;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-  }
-
-  .feature-link {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    gap: 7px;
-    margin-top: 20px;
-    font-weight: 750;
-  }
-
-  .home-empty {
-    min-height: 300px;
-  }
-
-  .home-empty .feature-link {
-    margin-top: 18px;
-  }
-
-  @media (max-width: 760px) {
-    .home-empty {
-      min-height: 0;
-    }
-  }
-</style>

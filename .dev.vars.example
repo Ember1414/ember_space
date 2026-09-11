@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local development only. Use independent, high-entropy values.
+INITIAL_SETUP_KEY=replace-with-a-random-local-setup-key
+SESSION_SECRET=replace-with-a-different-random-local-session-secret

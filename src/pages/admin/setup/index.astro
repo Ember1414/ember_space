@@ -1,0 +1,55 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="初始化" minimal>
+  <section class="auth-card card" aria-labelledby="setup-title">
+    <p class="eyebrow">ONE-TIME SETUP</p>
+    <h1 id="setup-title" class="page-title">创建所有者账号</h1>
+    <p class="auth-lede">首次部署时使用 Cloudflare 环境变量提供的初始化密钥。成功后该密钥会立即失效。</p>
+    <form data-setup-form>
+      <div class="field"><label for="setup-key">初始化密钥</label><input id="setup-key" name="setupKey" type="password" autocomplete="off" required /></div>
+      <div class="field"><label for="setup-username">所有者账号</label><input id="setup-username" name="username" autocomplete="username" required /></div>
+      <div class="field"><label for="setup-password">密码</label><input id="setup-password" name="password" type="password" autocomplete="new-password" minlength="10" required /><small>至少 10 个字符。</small></div>
+      <div class="auth-message" data-setup-message role="alert"></div>
+      <button class="button button--primary" type="submit">完成初始化</button>
+    </form>
+    <p class="auth-foot"><a href="/admin/login/">已有账号？返回登录</a></p>
+  </section>
+</AdminLayout>
+
+<script>
+  const setupForm = document.querySelector<HTMLFormElement>('[data-setup-form]');
+  const setupMessage = document.querySelector<HTMLElement>('[data-setup-message]');
+  setupForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = setupForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    if (setupMessage) setupMessage.textContent = '正在创建…';
+    const values = Object.fromEntries(new FormData(setupForm).entries());
+    const username = String(values.username || '').trim();
+    const body = { ...values, username, email: username, displayName: username };
+    try {
+      const response = await fetch('/api/auth/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await response.json().catch(() => ({})) as { error?: string | { message?: string }; message?: string };
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : data.error?.message || data.message || '初始化失败。');
+      window.location.href = '/admin/login/?setup=ok';
+    } catch (error) {
+      if (setupMessage) setupMessage.textContent = error instanceof Error ? error.message : '初始化失败，请稍后重试。';
+      if (button) button.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .auth-card { width: min(100%, 480px); margin: 8vh auto 0; padding: clamp(24px, 5vw, 44px); }
+  .auth-card .page-title { margin-bottom: 10px; }
+  .auth-lede { margin: 0 0 28px; color: var(--text-muted); }
+  .auth-card form { display: grid; gap: 18px; }
+  .field { display: grid; gap: 6px; }
+  .field label { color: var(--text-soft); font-size: 0.84rem; font-weight: 750; }
+  .field input { width: 100%; padding: 0.7rem 0.75rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .field small { color: var(--text-muted); font-size: 0.74rem; }
+  .auth-message { min-height: 1.4em; color: var(--accent-strong); font-size: 0.86rem; }
+  .auth-foot { margin: 24px 0 0; color: var(--text-muted); font-size: 0.84rem; }
+</style>

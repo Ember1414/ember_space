@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { normalizeAccount } from '../../../lib/auth/account';
 import { constantTimeEqual, hashPassword } from '../../../lib/auth/crypto';
 import { errorResponse, getRuntime, json, readJsonObject, trustedRequestOrigin } from '../../../lib/auth/http';
 
@@ -18,11 +19,14 @@ export const POST: APIRoute = async (context) => {
     const body = await readJsonObject(context.request);
     if (!body) return errorResponse(400, '请求格式无效。');
     const setupKey = typeof body.setupKey === 'string' ? body.setupKey : '';
-    const username = typeof body.username === 'string' ? body.username.normalize('NFKC').trim().toLowerCase() : '';
+    const username = normalizeAccount(body.username);
     const password = typeof body.password === 'string' ? body.password : '';
     const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : username;
 
-    if (!constantTimeEqual(setupKey, runtime.env.INITIAL_SETUP_KEY)) return errorResponse(403, '初始化密钥无效。');
+    if (setupKey.length < 16 || setupKey.length > 512 || runtime.env.INITIAL_SETUP_KEY.length > 512
+      || !await constantTimeEqual(setupKey, runtime.env.INITIAL_SETUP_KEY)) {
+      return errorResponse(403, '初始化密钥无效。');
+    }
     if (!validAccount(username)) return errorResponse(400, '账号长度应为 3 到 254 个字符。');
     if (displayName.length < 1 || displayName.length > 80) return errorResponse(400, '显示名称长度应为 1 到 80 个字符。');
     if (password.length < 10 || password.length > 256) return errorResponse(400, '密码长度应为 10 到 256 个字符。');
@@ -45,8 +49,14 @@ export const POST: APIRoute = async (context) => {
 
     if (Number(created.meta.changes ?? 0) !== 1) return errorResponse(409, '站点已经完成初始化。');
     return json({ user: { id, username, email: username, displayName, role: 'owner', active: true } }, 201);
-  } catch {
+  } catch (error) {
+    const diagnostic = error instanceof Error
+      ? { name: error.name, message: error.message }
+      : { name: 'UnknownError', message: String(error) };
+    console.error(JSON.stringify({
+      event: 'owner_setup_failed',
+      error: diagnostic,
+    }));
     return errorResponse(500, '初始化失败，请稍后重试。');
   }
 };
-

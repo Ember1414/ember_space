@@ -4,6 +4,8 @@ import SearchPage from '../components/SearchPage.astro';
 import { t, type Lang } from '../i18n/ui';
 
 const lang: Lang = 'zh';
+
+export const prerender = true;
 ---
 
 <BaseLayout

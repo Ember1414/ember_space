@@ -1,0 +1,19 @@
+.tag-page {
+  width: min(100%, 980px);
+  margin-inline: auto;
+}
+
+:where(.tag-page) .page-intro .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+:where(.tag-page) .back-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 36px;
+  font-weight: 700;
+}

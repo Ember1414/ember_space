@@ -1,0 +1,11 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminEditor from '../../../components/AdminEditor.astro';
+
+const id = Astro.params.id ?? '';
+---
+
+<AdminLayout title="编辑文章">
+  <AdminEditor postId={id} />
+</AdminLayout>

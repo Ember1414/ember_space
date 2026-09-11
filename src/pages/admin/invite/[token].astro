@@ -1,0 +1,60 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+const token = Astro.params.token ?? '';
+---
+
+<AdminLayout title="接受邀请" minimal>
+  <section class="auth-card card" aria-labelledby="invite-accept-title" data-invite-accept data-token={token}>
+    <p class="eyebrow">INVITATION / EDITOR</p>
+    <h1 id="invite-accept-title" class="page-title">创建协作者账号</h1>
+    <p class="auth-lede">设置显示名称、登录邮箱和密码，完成后即可进入内容后台。</p>
+    <form data-accept-form>
+      <div class="field"><label for="accept-name">显示名称</label><input id="accept-name" name="displayName" autocomplete="name" required /></div>
+      <div class="field"><label for="accept-email">登录邮箱</label><input id="accept-email" name="email" type="email" autocomplete="email" required /></div>
+      <div class="field"><label for="accept-password">密码</label><input id="accept-password" name="password" type="password" autocomplete="new-password" minlength="10" required /><small>至少 10 个字符。</small></div>
+      <div class="auth-message" data-accept-message role="alert"></div>
+      <button class="button button--primary" type="submit">接受邀请并创建账号</button>
+    </form>
+    <p class="auth-foot"><a href="/">返回网站首页</a></p>
+  </section>
+</AdminLayout>
+
+<script>
+  const acceptCard = document.querySelector<HTMLElement>('[data-invite-accept]');
+  const acceptForm = acceptCard?.querySelector<HTMLFormElement>('[data-accept-form]');
+  const acceptMessage = acceptCard?.querySelector<HTMLElement>('[data-accept-message]');
+  acceptForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const token = acceptCard?.dataset.token || '';
+    const button = acceptForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    if (acceptMessage) acceptMessage.textContent = '正在创建账号…';
+    const values = Object.fromEntries(new FormData(acceptForm).entries());
+    const email = String(values.email || '').trim();
+    const body = { ...values, email, username: email };
+    try {
+      const response = await fetch(`/api/invites/${encodeURIComponent(token)}/accept`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await response.json().catch(() => ({})) as { error?: string | { message?: string }; message?: string };
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : data.error?.message || data.message || '邀请无效、已使用或已过期。');
+      window.location.href = '/admin/login/?invite=accepted';
+    } catch (error) {
+      if (acceptMessage) acceptMessage.textContent = error instanceof Error ? error.message : '无法接受邀请，请联系所有者。';
+      if (button) button.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .auth-card { width: min(100%, 500px); margin: 8vh auto 0; padding: clamp(24px, 5vw, 44px); }
+  .auth-card .page-title { margin-bottom: 10px; }
+  .auth-lede { margin: 0 0 28px; color: var(--text-muted); }
+  .auth-card form { display: grid; gap: 18px; }
+  .field { display: grid; gap: 6px; }
+  .field label { color: var(--text-soft); font-size: 0.84rem; font-weight: 750; }
+  .field input { width: 100%; padding: 0.7rem 0.75rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .field small { color: var(--text-muted); font-size: 0.74rem; }
+  .auth-message { min-height: 1.4em; color: var(--accent-strong); font-size: 0.86rem; }
+  .auth-foot { margin: 24px 0 0; color: var(--text-muted); font-size: 0.84rem; }
+</style>

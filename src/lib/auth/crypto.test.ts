@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { constantTimeEqual, hashPassword, randomToken, sha256, verifyPassword } from './crypto';
+import {
+  constantTimeEqual,
+  hashPassword,
+  PASSWORD_HASH_ITERATIONS,
+  randomToken,
+  sha256,
+  verifyPassword,
+} from './crypto';
 
 describe('password hashing', () => {
+  it('stays within the Cloudflare Workers PBKDF2 iteration limit', async () => {
+    expect(PASSWORD_HASH_ITERATIONS).toBe(100_000);
+    const digest = await hashPassword('cloudflare-compatible password');
+    expect(digest.hash).toMatch(/^pbkdf2-sha256\$100000\$/);
+  });
+
   it('verifies the right password and rejects a wrong password', async () => {
     const digest = await hashPassword('correct horse battery staple');
     await expect(verifyPassword('correct horse battery staple', digest.hash, digest.salt)).resolves.toBe(true);
@@ -30,10 +43,9 @@ describe('opaque tokens', () => {
     await expect(sha256(first)).resolves.toBe(await sha256(first));
   });
 
-  it('compares secrets without accepting different lengths', () => {
-    expect(constantTimeEqual('token', 'token')).toBe(true);
-    expect(constantTimeEqual('token', 'token-longer')).toBe(false);
-    expect(constantTimeEqual('', 'x')).toBe(false);
+  it('compares secrets without accepting different lengths', async () => {
+    await expect(constantTimeEqual('token', 'token')).resolves.toBe(true);
+    await expect(constantTimeEqual('token', 'token-longer')).resolves.toBe(false);
+    await expect(constantTimeEqual('', 'x')).resolves.toBe(false);
   });
 });
-

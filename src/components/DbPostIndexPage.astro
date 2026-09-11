@@ -1,0 +1,28 @@
+---
+import { Archive, BookOpen, Hash } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DbPostCard from './DbPostCard.astro';
+import type { PostSummary } from '../lib/db';
+import { t, tf, type Lang } from '../i18n/ui';
+import '../styles/pages/post-index.css';
+
+interface Props { lang: Lang; posts: PostSummary[]; }
+const { lang, posts } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+const featured = (posts.filter((post) => post.featured).length ? posts.filter((post) => post.featured) : posts.slice(0, 1)).slice(0, 2);
+const counts = new Map<string, number>();
+for (const post of posts) for (const tag of post.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+const topics = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], lang)).slice(0, 12);
+const years = new Map<number, PostSummary[]>();
+for (const post of posts) { const year = new Date(post.pubDate).getFullYear(); years.set(year, [...(years.get(year) ?? []), post]); }
+---
+<BaseLayout lang={lang} title={t(lang, 'posts.title')} description={t(lang, 'posts.subtitle')} canonicalPath={`${base}/posts/`} alternatePath={lang === 'zh' ? '/en/posts/' : '/posts/'}>
+  <div class="post-index" data-pagefind-body data-pagefind-filter={`lang:${lang}`}>
+    <header class="page-intro anim"><p class="eyebrow">{lang === 'zh' ? 'WRITING / 工程笔记' : 'WRITING / FIELD NOTES'}</p><h1 class="page-title">{t(lang, 'posts.title')}</h1><p class="page-sub">{t(lang, 'posts.subtitle')} <span class="post-count">{tf(lang, 'posts.count', posts.length)}</span></p></header>
+    {posts.length === 0 ? <section class="empty-state"><h2>{lang === 'zh' ? '文章正在整理中' : t(lang, 'posts.emptyTitle')}</h2><p>{lang === 'zh' ? '这里会发布经过整理的工程笔记与实践记录。' : t(lang, 'posts.emptyText')}</p></section> : <>
+      {featured.length > 0 && <section class="index-section"><header class="section-head section-head--compact"><div><p class="eyebrow"><BookOpen size={15} aria-hidden="true" /> EDITOR'S PICK</p><h2>{t(lang, 'posts.featured')}</h2></div></header><ol class="post-list featured-list">{featured.map((post) => <DbPostCard post={post} lang={lang} headingLevel={3} />)}</ol></section>}
+      {topics.length > 0 && <section class="index-section topics-section"><header class="section-head section-head--compact"><div><p class="eyebrow"><Hash size={15} aria-hidden="true" /> TOPICS</p><h2>{t(lang, 'posts.topics')}</h2></div></header><ul class="tag-list topic-list">{topics.map(([tag, count]) => <li><a class="tag topic-link" href={`${base}/tags/${encodeURIComponent(tag)}/`}><span>{tag}</span><span class="topic-count">{count}</span></a></li>)}</ul></section>}
+      <section class="index-section archive-section"><header class="section-head section-head--compact"><div><p class="eyebrow"><Archive size={15} aria-hidden="true" /> ARCHIVE</p><h2>{t(lang, 'posts.archive')}</h2></div></header>{[...years.entries()].sort((a, b) => b[0] - a[0]).map(([year, yearPosts]) => <section class="year-group"><h3 class="year-heading">{year}</h3><ol class="post-list">{yearPosts.map((post) => <DbPostCard post={post} lang={lang} headingLevel={3} />)}</ol></section>)}</section>
+    </>}
+  </div>
+</BaseLayout>

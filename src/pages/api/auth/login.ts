@@ -1,14 +1,20 @@
 import type { APIRoute } from 'astro';
 import type { Role } from '../../../lib/db';
-import { sha256, verifyPassword } from '../../../lib/auth/crypto';
+import { normalizeAccount } from '../../../lib/auth/account';
+import { PASSWORD_HASH_ITERATIONS, sha256, verifyPassword } from '../../../lib/auth/crypto';
 import { errorResponse, getRuntime, json, readJsonObject, trustedRequestOrigin } from '../../../lib/auth/http';
+import {
+  completeSuccessfulLogin,
+  LOGIN_ATTEMPT_RETENTION_MS,
+  LOGIN_ATTEMPT_WINDOW_MS,
+  MAX_FAILED_LOGIN_ATTEMPTS,
+  reserveLoginAttempt,
+} from '../../../lib/auth/login-rate-limit';
 import { createSession, DEFAULT_SESSION_TTL_SECONDS, SESSION_COOKIE_NAME } from '../../../lib/auth/session';
 
 export const prerender = false;
 
-const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILED_ATTEMPTS = 5;
-const DUMMY_HASH = `pbkdf2-sha256$210000$${'A'.repeat(43)}=`;
+const DUMMY_HASH = `pbkdf2-sha256$${PASSWORD_HASH_ITERATIONS}$${'A'.repeat(43)}=`;
 const DUMMY_SALT = 'AAAAAAAAAAAAAAAAAAAAAA==';
 
 interface CredentialRow {
@@ -37,7 +43,7 @@ export const POST: APIRoute = async (context) => {
 
     const body = await readJsonObject(context.request);
     if (!body) return errorResponse(400, '请求格式无效。');
-    const username = typeof body.username === 'string' ? body.username.normalize('NFKC').trim().toLowerCase() : '';
+    const username = normalizeAccount(body.username);
     const password = typeof body.password === 'string' ? body.password : '';
     if (!username || username.length > 254 || !password || password.length > 256) {
       return errorResponse(401, '账号或密码不正确。');
@@ -45,13 +51,18 @@ export const POST: APIRoute = async (context) => {
 
     const now = new Date();
     const attemptedAt = now.toISOString();
-    const windowStart = new Date(now.getTime() - ATTEMPT_WINDOW_MS).toISOString();
+    const windowStart = new Date(now.getTime() - LOGIN_ATTEMPT_WINDOW_MS).toISOString();
+    const cleanupBefore = new Date(now.getTime() - LOGIN_ATTEMPT_RETENTION_MS).toISOString();
     const ipHash = await sha256(`${runtime.env.SESSION_SECRET}:${clientIp(context.request)}`);
-    const recent = await runtime.db.prepare(
-      `SELECT COUNT(*) AS count FROM login_attempts
-       WHERE successful = 0 AND attempted_at >= ? AND (ip_hash = ? OR email = ?)`,
-    ).bind(windowStart, ipHash, username).first<{ count: number }>();
-    if (Number(recent?.count ?? 0) >= MAX_FAILED_ATTEMPTS) {
+    const attemptId = await reserveLoginAttempt(runtime.db, {
+      ipHash,
+      email: username,
+      attemptedAt,
+      windowStart,
+      cleanupBefore,
+      maximum: MAX_FAILED_LOGIN_ATTEMPTS,
+    });
+    if (attemptId === null) {
       return json({ error: '登录尝试过于频繁，请稍后再试。', retryAfter: 900 }, 429, { 'retry-after': '900' });
     }
 
@@ -66,24 +77,10 @@ export const POST: APIRoute = async (context) => {
     );
 
     if (!user || !user.active || !passwordMatches) {
-      await runtime.db.prepare(
-        'INSERT INTO login_attempts (ip_hash, email, attempted_at, successful) VALUES (?, ?, ?, 0)',
-      ).bind(ipHash, username, attemptedAt).run();
       return errorResponse(401, '账号或密码不正确。');
     }
 
-    await runtime.db.batch([
-      runtime.db.prepare(
-        'INSERT INTO login_attempts (ip_hash, email, attempted_at, successful) VALUES (?, ?, ?, 1)',
-      ).bind(ipHash, username, attemptedAt),
-      runtime.db.prepare(
-        'DELETE FROM login_attempts WHERE successful = 0 AND (ip_hash = ? OR email = ?)',
-      ).bind(ipHash, username),
-      runtime.db.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(attemptedAt),
-      runtime.db.prepare('DELETE FROM login_attempts WHERE attempted_at < ?').bind(
-        new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
-      ),
-    ]);
+    await completeSuccessfulLogin(runtime.db, { attemptId, attemptedAt });
 
     const { token, session } = await createSession(runtime.db, user.id, now);
     context.cookies.set(SESSION_COOKIE_NAME, token, {
@@ -102,4 +99,3 @@ export const POST: APIRoute = async (context) => {
     return errorResponse(500, '登录服务暂时不可用。');
   }
 };
-

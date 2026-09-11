@@ -4,6 +4,7 @@ import { Archive, ArrowRight, BookOpen, Hash } from 'lucide-astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { t, tf, type Lang } from '../i18n/ui';
 import PostCard from './PostCard.astro';
+import '../styles/pages/post-index.css';
 
 interface Props {
   lang: Lang;
@@ -134,107 +135,3 @@ const empty = isZh
     </div>
   </div>
 </BaseLayout>
-
-<style>
-  .post-index {
-    width: min(100%, 980px);
-    margin-inline: auto;
-  }
-
-  .post-count {
-    display: inline-block;
-    margin-left: 0.5rem;
-    color: var(--text-soft);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    white-space: nowrap;
-  }
-
-  .index-section + .index-section {
-    margin-top: 64px;
-  }
-
-  .section-head--compact {
-    margin-bottom: 18px;
-  }
-
-  .section-head--compact .eyebrow {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    margin-bottom: 0.45rem;
-  }
-
-  .section-head--compact h2 {
-    font-size: 1.7rem;
-  }
-
-  .featured-list {
-    padding-inline: 20px;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    background: var(--surface);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .featured-list :global(.post-item:first-child) {
-    border-top: 0;
-  }
-
-  .featured-list :global(.post-item:last-child) {
-    border-bottom: 0;
-  }
-
-  .topic-list {
-    gap: 10px;
-  }
-
-  .topic-link {
-    min-height: 42px;
-    gap: 12px;
-    padding-inline: 0.78rem;
-  }
-
-  .topic-count {
-    display: inline-grid;
-    min-width: 1.45rem;
-    height: 1.45rem;
-    place-items: center;
-    border-radius: 3px;
-    background: var(--surface-soft);
-    color: var(--text-muted);
-    font-size: 0.68rem;
-  }
-
-  .year-heading {
-    margin-bottom: 0;
-    padding-block: 0.7rem;
-    border-bottom: 1px solid var(--border-strong);
-    color: var(--accent);
-    font-size: 0.88rem;
-  }
-
-  .empty-link {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    gap: 7px;
-    margin-top: 18px;
-    font-weight: 700;
-  }
-
-  @media (max-width: 760px) {
-    .post-count {
-      display: block;
-      margin: 0.45rem 0 0;
-    }
-
-    .featured-list {
-      padding-inline: 16px;
-    }
-
-    .index-section + .index-section {
-      margin-top: 52px;
-    }
-  }
-</style>

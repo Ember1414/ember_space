@@ -1,0 +1,102 @@
+:where(.home-page) .home-focus {
+  background: var(--bg);
+}
+
+:where(.home-page) .home-focus .section-head {
+  align-items: start;
+}
+
+:where(.home-page) .feature-grid > div {
+  min-width: 0;
+}
+
+:where(.home-page) .feature-post,
+:where(.home-page) .featured-project,
+:where(.home-page) .home-empty {
+  height: 100%;
+}
+
+:where(.home-page) .featured-project .project-card {
+  height: 100%;
+}
+
+:where(.home-page) .feature-post-fallback {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 24px;
+  background: var(--surface-strong);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+:where(.home-page) .feature-post-fallback::before,
+:where(.home-page) .feature-post-fallback::after {
+  position: absolute;
+  background: var(--border-strong);
+  content: '';
+}
+
+:where(.home-page) .feature-post-fallback::before {
+  top: 22%;
+  right: 24px;
+  bottom: 24px;
+  width: 1px;
+}
+
+:where(.home-page) .feature-post-fallback::after {
+  right: 24px;
+  bottom: 24px;
+  left: 22%;
+  height: 1px;
+}
+
+:where(.home-page) .feature-post-fallback strong {
+  position: relative;
+  color: var(--accent);
+  font-size: 2.7rem;
+  line-height: 0.8;
+}
+
+:where(.home-page) .feature-label {
+  margin-bottom: 10px !important;
+  color: var(--accent) !important;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+:where(.home-page) .feature-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
+:where(.home-page) .feature-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  margin-top: 20px;
+  font-weight: 750;
+}
+
+:where(.home-page) .home-empty {
+  min-height: 300px;
+}
+
+:where(.home-page) .home-empty .feature-link {
+  margin-top: 18px;
+}
+
+@media (max-width: 760px) {
+  :where(.home-page) .home-empty {
+    min-height: 0;
+  }
+}

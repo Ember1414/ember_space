@@ -16,11 +16,13 @@ export const PATCH: APIRoute = async (context) => {
     if (active === null) return errorResponse(400, '成员状态无效。');
     if (id === auth.session.user.id) return errorResponse(409, '不能暂停所有者账号。');
 
-    const updated = await auth.db.prepare(
-      `UPDATE users SET active = ?, updated_at = ? WHERE id = ? AND role = 'editor'`,
-    ).bind(active ? 1 : 0, new Date().toISOString(), id).run();
+    const [updated] = await auth.db.batch([
+      auth.db.prepare(
+        `UPDATE users SET active = ?, updated_at = ? WHERE id = ? AND role = 'editor'`,
+      ).bind(active ? 1 : 0, new Date().toISOString(), id),
+      auth.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
+    ]);
     if (Number(updated.meta.changes ?? 0) !== 1) return errorResponse(404, '成员不存在。');
-    if (!active) await auth.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id).run();
     return json({ member: { id, active, status: active ? 'active' : 'suspended' } });
   } catch {
     return errorResponse(500, '成员状态更新失败。');

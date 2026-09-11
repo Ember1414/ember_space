@@ -1,0 +1,20 @@
+---
+import type { PostTocItem } from '../lib/posts/toc';
+
+interface Props { items: PostTocItem[]; }
+const { items } = Astro.props;
+---
+<ul class="toc-list">
+  {items.map((h2) => (
+    <li>
+      <a href={`#${h2.slug}`} data-toc-link>{h2.text}</a>
+      {h2.children.length > 0 && (
+        <ul>
+          {h2.children.map((h3) => (
+            <li><a href={`#${h3.slug}`} data-toc-link>{h3.text}</a></li>
+          ))}
+        </ul>
+      )}
+    </li>
+  ))}
+</ul>

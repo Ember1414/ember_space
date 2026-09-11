@@ -1,14 +1,39 @@
 ---
-import { getCollection } from 'astro:content';
 import TagPage from '../../components/TagPage.astro';
+import DbTagPage from '../../components/DbTagPage.astro';
+import PublicContentUnavailable from '../../components/PublicContentUnavailable.astro';
+import { allowsStaticPostFallback, getPublishedPostSummariesByTag, hasPublishedPostWithTag, runtimeEnv, type PostSummary } from '../../lib/db';
 
-export async function getStaticPaths() {
-  const posts = await getCollection('posts', ({ data }) => !data.draft && data.lang === 'zh');
-  const tags = new Set(posts.flatMap(({ data }) => data.tags));
-  return [...tags].map((tag) => ({ params: { tag } }));
-}
-
+export const prerender = false;
 const tag = Astro.params.tag ?? '';
+const env = runtimeEnv(Astro.locals);
+const hasDb = Boolean(env?.DB);
+let dbPosts: PostSummary[] | null = null;
+let alternatePath: string | null = null;
+let dbUnavailable = !hasDb && !allowsStaticPostFallback(env);
+if (hasDb) {
+  try {
+    dbPosts = await getPublishedPostSummariesByTag(env, 'zh', tag) ?? [];
+    if (await hasPublishedPostWithTag(env, 'en', tag)) {
+      alternatePath = `/en/tags/${encodeURIComponent(tag)}/`;
+    }
+  } catch (error) {
+    dbUnavailable = true;
+    console.error(JSON.stringify({
+      event: 'public_content_read_failed',
+      path: Astro.url.pathname,
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  }
+}
+if (dbUnavailable) {
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+  Astro.response.headers.set('Retry-After', '60');
+}
 ---
-
-<TagPage lang="zh" tag={tag} />
+{dbUnavailable
+  ? <PublicContentUnavailable lang="zh" canonicalPath={`/tags/${encodeURIComponent(tag)}/`} />
+  : hasDb
+    ? <DbTagPage lang="zh" tag={tag} posts={dbPosts ?? []} alternatePath={alternatePath} />
+    : <TagPage lang="zh" tag={tag} />}

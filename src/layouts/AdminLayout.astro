@@ -1,0 +1,170 @@
+---
+import { SITE } from '../consts';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  minimal?: boolean;
+}
+
+const { title = '后台', description = '内容管理后台', minimal = false } = Astro.props;
+const pageTitle = `${title} · ${SITE.title}`;
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.theme = stored || (systemDark ? 'dark' : 'light');
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+  </head>
+  <body class="admin-body" data-admin-auth={minimal ? undefined : ''}>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <a class="admin-brand" href={minimal ? '/' : '/admin/'} aria-label={minimal ? '返回网站首页' : '返回后台首页'}>
+          <span class="admin-brand-mark" aria-hidden="true">E</span>
+          <span>{SITE.title} <small>ADMIN</small></span>
+        </a>
+        {!minimal && <nav class="admin-nav" aria-label="后台导航">
+          <a href="/admin/">文章</a>
+          <a href="/admin/posts/new/">新建文章</a>
+          <a href="/admin/members/" data-owner-only hidden>成员</a>
+          <span class="admin-session-message" data-admin-session-message role="status" aria-live="polite"></span>
+          <button class="admin-logout" type="button" data-admin-logout>退出</button>
+        </nav>}
+      </div>
+    </header>
+    <main id="main-content" class="admin-main" tabindex="-1">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<script>
+  import { requestAdminLogout } from '../lib/admin/logout';
+
+  const adminAuthRoot = document.querySelector<HTMLElement>('[data-admin-auth]');
+  if (adminAuthRoot) {
+    void (async () => {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.replace('/admin/login/');
+          return;
+        }
+        if (!response.ok) return;
+        const data = await response.json() as { user?: { role?: 'owner' | 'editor' } };
+        const isOwner = data.user?.role === 'owner';
+        document.querySelectorAll<HTMLElement>('[data-owner-only]').forEach((element) => {
+          element.hidden = !isOwner;
+        });
+        if (!isOwner && window.location.pathname.startsWith('/admin/members')) {
+          window.location.replace('/admin/');
+        }
+      } catch {
+        // Individual admin pages surface service errors in their own status area.
+      }
+    })();
+  }
+
+  const logoutButton = document.querySelector<HTMLButtonElement>('[data-admin-logout]');
+  const sessionMessage = document.querySelector<HTMLElement>('[data-admin-session-message]');
+  logoutButton?.addEventListener('click', async () => {
+    logoutButton.disabled = true;
+    if (sessionMessage) sessionMessage.textContent = '';
+    try {
+      await requestAdminLogout();
+      window.location.href = '/admin/login/';
+    } catch (error) {
+      if (sessionMessage) {
+        sessionMessage.textContent = error instanceof Error ? error.message : '退出失败，请稍后重试。';
+      }
+      logoutButton.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .admin-body { min-height: 100vh; }
+  .admin-header {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  .admin-header-inner {
+    display: flex;
+    width: min(calc(100% - 40px), var(--shell));
+    min-height: var(--header-height);
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-inline: auto;
+  }
+  .admin-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .admin-brand small { color: var(--accent); font-size: 0.64rem; }
+  .admin-brand-mark {
+    display: inline-grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  .admin-nav { display: flex; align-items: center; gap: 8px; }
+  .admin-session-message { max-width: 240px; color: var(--accent-strong); font-size: 0.76rem; }
+  .admin-nav a,
+  .admin-logout {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-soft);
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .admin-nav a:hover,
+  .admin-logout:hover { border-color: var(--border); background: var(--surface-soft); color: var(--accent-strong); }
+  .admin-nav [hidden] { display: none; }
+  .admin-main { width: min(calc(100% - 40px), var(--shell)); margin-inline: auto; padding-block: 56px 90px; }
+  @media (max-width: 680px) {
+    .admin-header-inner { width: min(calc(100% - 28px), var(--shell)); align-items: flex-start; flex-direction: column; padding-block: 12px; }
+    .admin-nav { width: 100%; overflow-x: auto; }
+    .admin-nav a, .admin-logout { white-space: nowrap; }
+    .admin-main { width: min(calc(100% - 28px), var(--shell)); padding-block: 38px 72px; }
+  }
+</style>

@@ -1,0 +1,66 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import type { Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+  canonicalPath: string;
+}
+
+const { lang, canonicalPath } = Astro.props;
+const copy = lang === 'zh'
+  ? {
+      title: '内容暂时不可用',
+      description: '公开内容服务暂时无法连接，请稍后重试。',
+      retry: '重新加载',
+    }
+  : {
+      title: 'Content temporarily unavailable',
+      description: 'The public content service cannot be reached right now. Please try again shortly.',
+      retry: 'Reload page',
+    };
+---
+
+<BaseLayout
+  lang={lang}
+  title={copy.title}
+  description={copy.description}
+  canonicalPath={canonicalPath}
+  noindex
+>
+  <section class="content-unavailable" aria-labelledby="content-unavailable-title">
+    <p class="eyebrow">SERVICE STATUS</p>
+    <h1 id="content-unavailable-title">{copy.title}</h1>
+    <p>{copy.description}</p>
+    <a class="button button--primary" href={canonicalPath}>{copy.retry}</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .content-unavailable {
+    width: min(100%, 680px);
+    margin-inline: auto;
+    padding-block: 48px;
+  }
+
+  .content-unavailable h1 {
+    margin-bottom: 1rem;
+    font-size: 2.35rem;
+  }
+
+  .content-unavailable > p:not(.eyebrow) {
+    max-width: 54ch;
+    margin: 0 0 1.5rem;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 760px) {
+    .content-unavailable {
+      padding-block: 24px;
+    }
+
+    .content-unavailable h1 {
+      font-size: 2rem;
+    }
+  }
+</style>

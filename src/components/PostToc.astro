@@ -1,0 +1,26 @@
+---
+import { t, type Lang } from '../i18n/ui';
+import type { PostTocItem } from '../lib/posts/toc';
+import PostTocList from './PostTocList.astro';
+
+interface Props {
+  items: PostTocItem[];
+  lang: Lang;
+  variant: 'mobile' | 'desktop';
+}
+
+const { items, lang, variant } = Astro.props;
+---
+{variant === 'mobile' ? (
+  <details class="mobile-toc anim" data-pagefind-ignore>
+    <summary>{t(lang, 'post.mobileToc')}</summary>
+    <nav aria-label={t(lang, 'post.toc')}><PostTocList items={items} /></nav>
+  </details>
+) : (
+  <aside class="toc" aria-label={t(lang, 'post.toc')} data-pagefind-ignore>
+    <div class="toc-inner">
+      <p class="toc-title">{t(lang, 'post.toc')}</p>
+      <PostTocList items={items} />
+    </div>
+  </aside>
+)}

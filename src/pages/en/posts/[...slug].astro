@@ -3,45 +3,93 @@ import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostPage from '../../../templates/PostPage.astro';
+import DbPostPage from '../../../components/DbPostPage.astro';
+import PublicContentUnavailable from '../../../components/PublicContentUnavailable.astro';
+import { allowsStaticPostFallback, getPublishedPostBySlug, getPublishedPostSummaries, getPublishedTranslationSlug, runtimeEnv, type PostRecord, type PostSummary } from '../../../lib/db';
 
-interface Props {
-  post: CollectionEntry<'posts'>;
-  alternatePath: string | null;
+export const prerender = false;
+const slugParam = Astro.params.slug ?? '';
+const slug = Array.isArray(slugParam) ? slugParam.join('/') : slugParam;
+const env = runtimeEnv(Astro.locals);
+let dbPost: PostRecord | null = null;
+let dbPosts: PostSummary[] | null = null;
+let alternatePath: string | null = null;
+const hasDb = Boolean(env?.DB);
+let dbUnavailable = !hasDb && !allowsStaticPostFallback(env);
+if (hasDb) {
+  try {
+    dbPost = await getPublishedPostBySlug(env, slug, 'en');
+    if (dbPost) {
+      dbPosts = await getPublishedPostSummaries(env, 'en');
+      if (dbPost.translationKey) {
+        const alternateSlug = await getPublishedTranslationSlug(env, dbPost.translationKey, 'zh');
+        if (alternateSlug) alternatePath = `/posts/${alternateSlug}/`;
+      }
+    }
+  } catch (error) {
+    dbUnavailable = true;
+    console.error(JSON.stringify({
+      event: 'public_content_read_failed',
+      path: Astro.url.pathname,
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  }
 }
-
-export async function getStaticPaths() {
-  const posts = await getCollection('posts', ({ data }) => !data.draft);
-  return posts
-    .filter(({ data }) => data.lang === 'en')
-    .map((post) => {
-      const counterpart = post.data.translationKey
-        ? posts.find(({ data }) => data.lang === 'zh' && data.translationKey === post.data.translationKey)
-        : undefined;
-
-      return {
-        params: { slug: post.id },
-        props: {
-          post,
-          alternatePath: counterpart ? `/posts/${counterpart.id}/` : null,
-        },
-      };
-    });
+let staticPost: CollectionEntry<'posts'> | undefined;
+if (!hasDb && allowsStaticPostFallback(env)) {
+  const staticPosts = await getCollection('posts', ({ data }) => !data.draft);
+  staticPost = staticPosts.find((post) => post.data.lang === 'en' && post.id === slug);
+  if (staticPost?.data.translationKey) {
+    const counterpart = staticPosts.find((post) => post.data.lang === 'zh' && post.data.translationKey === staticPost!.data.translationKey);
+    if (counterpart) alternatePath = `/posts/${counterpart.id}/`;
+  }
 }
-
-const { post, alternatePath } = Astro.props as Props;
-const canonicalPath = `/en/posts/${post.id}/`;
+const notFound = !dbPost && !staticPost;
+const canonicalPath = `/en/posts/${slug}/`;
+if (dbUnavailable) {
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+  Astro.response.headers.set('Retry-After', '60');
+} else if (notFound) {
+  Astro.response.status = 404;
+}
 ---
-
-<BaseLayout
-  lang="en"
-  title={post.data.title}
-  description={post.data.description}
-  canonicalPath={canonicalPath}
-  alternatePath={alternatePath}
-  image={post.data.cover?.src}
-  pageType="article"
-  publishedDate={post.data.pubDate}
-  updatedDate={post.data.updatedDate}
->
-  <PostPage lang="en" post={post} />
-</BaseLayout>
+{dbUnavailable ? (
+  <PublicContentUnavailable lang="en" canonicalPath={canonicalPath} />
+) : notFound ? (
+  <BaseLayout lang="en" title="Post not found" noindex canonicalPath={canonicalPath}>
+    <div class="empty-state">
+      <h1>Post not found</h1>
+      <p>This post does not exist or has not been published.</p>
+      <a href="/en/posts/">Back to posts</a>
+    </div>
+  </BaseLayout>
+) : dbPost ? (
+  <BaseLayout
+    lang="en"
+    title={dbPost.title}
+    description={dbPost.description}
+    canonicalPath={canonicalPath}
+    alternatePath={alternatePath}
+    image={dbPost.cover ?? undefined}
+    pageType="article"
+    publishedDate={new Date(dbPost.pubDate)}
+    updatedDate={dbPost.updatedDate ? new Date(dbPost.updatedDate) : undefined}
+  >
+    <DbPostPage lang="en" post={dbPost} posts={dbPosts ?? []} />
+  </BaseLayout>
+) : (
+  <BaseLayout
+    lang="en"
+    title={staticPost!.data.title}
+    description={staticPost!.data.description}
+    canonicalPath={canonicalPath}
+    alternatePath={alternatePath}
+    image={staticPost!.data.cover?.src}
+    pageType="article"
+    publishedDate={staticPost!.data.pubDate}
+    updatedDate={staticPost!.data.updatedDate}
+  >
+    <PostPage lang="en" post={staticPost!} />
+  </BaseLayout>
+)}

@@ -1,7 +1,11 @@
 # build output
 dist/
+dist-pages/
 # generated types
 .astro/
+
+# local Cloudflare/Miniflare state
+.wrangler/
 
 # dependencies
 node_modules/
@@ -14,8 +18,10 @@ pnpm-debug.log*
 
 
 # environment variables
-.env
-.env.production
+.env*
+.dev.vars*
+!.env.example
+!.dev.vars.example
 
 # macOS-specific files
 .DS_Store

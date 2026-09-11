@@ -1,14 +1,27 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import cloudflare from '@astrojs/cloudflare';
 
 import { SITE } from './src/consts';
 
 export default defineConfig({
   site: SITE.url,
+  output: 'server',
+  adapter: cloudflare({
+    imageService: 'compile',
+    prerenderEnvironment: 'node',
+  }),
+  session: false,
   integrations: [
     sitemap({
-      // Keep locale-aware status pages (such as /en/404/) out of the sitemap.
+      filter: (page) => {
+        const pathname = new URL(page).pathname;
+        return !pathname.startsWith('/admin/')
+          && !pathname.startsWith('/api/')
+          && pathname !== '/sitemap-posts.xml';
+      },
+      customSitemaps: [new URL('/sitemap-posts.xml', SITE.url).href],
       i18n: {
         defaultLocale: 'zh',
         locales: {

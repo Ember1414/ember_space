@@ -15,9 +15,39 @@ export interface Repo {
 
 const CACHE = path.resolve('src/data/github-repos.json');
 
+export function repositoryUrlKey(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const pathname = url.pathname.replace(/\.git$/i, '').replace(/\/+$/, '').toLowerCase();
+    return pathname ? `${url.hostname.toLowerCase()}${pathname}` : null;
+  } catch {
+    return null;
+  }
+}
+
+export function formatRepositoryDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.valueOf())) return null;
+  const year = String(date.getUTCFullYear()).padStart(4, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
+}
+
+export function sortRepositoriesByPushDate(repositories: readonly Repo[]): Repo[] {
+  return [...repositories].sort((left, right) => {
+    const difference = Date.parse(right.pushed_at) - Date.parse(left.pushed_at);
+    return Number.isFinite(difference) && difference !== 0
+      ? difference
+      : left.name.localeCompare(right.name, 'en');
+  });
+}
+
 function readCache(): Repo[] {
   try {
-    return JSON.parse(fs.readFileSync(CACHE, 'utf-8')) as Repo[];
+    return sortRepositoriesByPushDate(JSON.parse(fs.readFileSync(CACHE, 'utf-8')) as Repo[]);
   } catch {
     return [];
   }
@@ -28,7 +58,9 @@ function readCache(): Repo[] {
  * 在线拉取成功会同步更新缓存文件；失败（如本地网络无法访问 GitHub）时回退到缓存。
  * 想刷新列表：在能访问 GitHub API 的网络下重新构建，或直接编辑 src/data/github-repos.json。
  */
-export async function getGitHubRepos(): Promise<Repo[]> {
+let repositoryRequest: Promise<Repo[]> | undefined;
+
+async function loadGitHubRepos(): Promise<Repo[]> {
   const username = SITE.social.github.split('/').pop() ?? '';
   if (!username) return readCache();
   try {
@@ -58,8 +90,13 @@ export async function getGitHubRepos(): Promise<Repo[]> {
     } catch {
       /* 缓存写入失败不影响构建 */
     }
-    return filtered;
+    return sortRepositoriesByPushDate(filtered);
   } catch {
     return readCache();
   }
+}
+
+export function getGitHubRepos(): Promise<Repo[]> {
+  repositoryRequest ??= loadGitHubRepos();
+  return repositoryRequest;
 }

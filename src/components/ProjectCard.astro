@@ -1,18 +1,23 @@
 ---
 import { Image } from 'astro:assets';
-import { ArrowRight, ArrowUpRight, Github } from 'lucide-astro';
+import { ArrowRight, ArrowUpRight, Github, Star } from 'lucide-astro';
 import type { CollectionEntry } from 'astro:content';
 import { t, type Lang } from '../i18n/ui';
+import { formatRepositoryDate } from '../lib/github';
 
 interface Props {
   project: CollectionEntry<'projects'>;
   lang?: Lang;
+  updatedAt?: string | null;
+  stars?: number;
 }
 
-const { project, lang = 'zh' } = Astro.props;
+const { project, lang = 'zh', updatedAt = null, stars } = Astro.props;
 const data = project.data;
 const base = lang === 'en' ? '/en' : '';
 const detailHref = `${base}/projects/${project.id}/`;
+const updatedDate = formatRepositoryDate(updatedAt);
+const dateLabel = updatedDate ?? String(data.year);
 ---
 
 <article class="card project-card">
@@ -21,15 +26,19 @@ const detailHref = `${base}/projects/${project.id}/`;
       <Image src={data.image} alt={data.imageAlt ?? ''} widths={[480, 760]} sizes="(max-width: 760px) 100vw, 50vw" loading="lazy" />
     </div>
   ) : (
-    <div class="card-media project-fallback" aria-hidden="true">
-      <span class="mono">{String(data.year).slice(-2)}</span>
-      <span>{data.tags[0] ?? 'BUILD'}</span>
+    <div class="card-media project-fallback">
+      <span class="project-fallback-date">
+        <small>{updatedDate ? (lang === 'zh' ? '更新于' : 'Updated') : (lang === 'zh' ? '年份' : 'Year')}</small>
+        {updatedAt && updatedDate ? <time datetime={updatedAt}>{dateLabel}</time> : <span>{dateLabel}</span>}
+      </span>
+      <span aria-hidden="true">{data.tags[0] ?? 'BUILD'}</span>
     </div>
   )}
   <div class="card-body">
     <div class="project-kicker">
       <span>{data.status ?? data.year}</span>
       {data.role && <span>{data.role}</span>}
+      {typeof stars === 'number' && <span class="project-stars"><Star size={13} aria-hidden="true" /> {stars}</span>}
     </div>
     <h3><a href={detailHref}>{data.name}</a></h3>
     <p>{data.description}</p>
@@ -65,11 +74,21 @@ const detailHref = `${base}/projects/${project.id}/`;
     font-size: 0.78rem;
   }
 
-  .project-fallback .mono {
+  .project-fallback-date {
+    display: grid;
+    gap: 4px;
     color: var(--accent);
-    font-size: 3.4rem;
+    font-family: var(--font-mono);
+    font-size: 1.02rem;
     font-weight: 700;
-    line-height: 0.85;
+    line-height: 1.15;
+  }
+
+  .project-fallback-date small {
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
   }
 
   .project-kicker {
@@ -82,6 +101,12 @@ const detailHref = `${base}/projects/${project.id}/`;
     font-family: var(--font-mono);
     font-size: 0.72rem;
     text-transform: uppercase;
+  }
+
+  .project-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .highlights {
@@ -104,6 +129,23 @@ const detailHref = `${base}/projects/${project.id}/`;
     flex-wrap: wrap;
     gap: 18px;
     margin-top: 20px;
+  }
+
+  .project-card {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+  }
+
+  .project-card .card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .project-card .project-links {
+    margin-top: auto;
+    padding-top: 20px;
   }
 
   .project-links a {

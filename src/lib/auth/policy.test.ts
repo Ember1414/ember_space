@@ -5,8 +5,9 @@ describe('authorization policy', () => {
   const owner = { id: 'owner', role: 'owner' as const, active: true };
   const editor = { id: 'editor', role: 'editor' as const, active: true };
   const suspended = { id: 'suspended', role: 'editor' as const, active: false };
-  const ownPost = { authorId: 'editor' };
-  const otherPost = { authorId: 'someone-else' };
+  const ownPost = { authorId: 'editor', status: 'draft' as const };
+  const archivedOwnPost = { authorId: 'editor', status: 'archived' as const };
+  const otherPost = { authorId: 'someone-else', status: 'draft' as const };
 
   it('gives member management only to the active owner', () => {
     expect(canManageMembers(owner)).toBe(true);
@@ -21,6 +22,9 @@ describe('authorization policy', () => {
     expect(canSetPostStatus(editor, ownPost, 'draft')).toBe(true);
     expect(canSetPostStatus(editor, ownPost, 'published')).toBe(true);
     expect(canSetPostStatus(editor, ownPost, 'archived')).toBe(false);
+    expect(canEditPost(editor, archivedOwnPost)).toBe(false);
+    expect(canPublishPost(editor, archivedOwnPost)).toBe(false);
+    expect(canSetPostStatus(editor, archivedOwnPost, 'published')).toBe(false);
     expect(canEditPost(editor, otherPost)).toBe(false);
     expect(canPublishPost(editor, otherPost)).toBe(false);
     expect(canDeletePost(editor, ownPost)).toBe(false);

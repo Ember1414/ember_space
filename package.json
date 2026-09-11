@@ -7,21 +7,38 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && pagefind --site dist",
+    "prebuild": "node scripts/clean-pages.mjs",
+    "build": "astro build && node scripts/build-pages.mjs && pagefind --site dist-pages",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "db:migrate": "wrangler d1 migrations apply ember-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply ember-db --remote",
+    "content:import": "node scripts/import-content.mjs",
+    "content:import:remote": "node scripts/import-content.mjs --remote",
+    "test:pages": "node scripts/smoke-pages.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^14.3.1",
     "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.4",
-    "astro": "^7.2.10",
-    "lucide-astro": "^0.556.0"
+    "astro": "^7.3.2",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.3.2",
+    "lucide-astro": "^0.556.0",
+    "marked": "^15.0.12",
+    "sanitize-html": "^2.17.7"
   },
   "allowScripts": {
     "esbuild": true
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "@types/sanitize-html": "^2.16.1",
     "pagefind": "^1.5.2",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4",
     "wrangler": "^4.127.1"
   }
 }

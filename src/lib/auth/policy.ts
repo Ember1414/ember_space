@@ -8,6 +8,7 @@ export interface AuthenticatedUser {
 
 export interface OwnedPost {
   authorId: string | null;
+  status: WritablePostStatus;
 }
 
 export type WritablePostStatus = 'draft' | 'published' | 'archived';
@@ -21,7 +22,10 @@ export function canCreatePost(user: AuthenticatedUser): boolean {
 }
 
 export function canEditPost(user: AuthenticatedUser, post: OwnedPost): boolean {
-  return user.active && (user.role === 'owner' || post.authorId === user.id);
+  return user.active && (
+    user.role === 'owner'
+    || (post.authorId === user.id && post.status !== 'archived')
+  );
 }
 
 export const canPublishPost = canEditPost;
