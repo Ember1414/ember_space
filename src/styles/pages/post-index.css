@@ -32,11 +32,12 @@
 }
 
 :where(.post-index) .featured-list {
-  padding-inline: 20px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
+  padding-block: 12px;
+  padding-inline: 30px;
 }
 
 :where(.post-index) .featured-list .post-item:first-child {
@@ -92,7 +93,7 @@
   }
 
   :where(.post-index) .featured-list {
-    padding-inline: 16px;
+    padding-inline: 20px;
   }
 
   :where(.post-index) .index-section + .index-section {
