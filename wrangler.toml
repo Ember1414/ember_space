@@ -19,10 +19,10 @@ migrations_dir = "migrations"
 # [[r2_buckets]]
 # binding = "IMAGES"
 # bucket_name = "ember-images"
-#
-# [[kv_namespaces]]
-# binding = "IMAGES_KV"
-# id = "<wrangler kv namespace create 输出的 id>"
+
+[[kv_namespaces]]
+binding = "IMAGES_KV"
+id = "d62127f8e13243d3850045f92ece240d"
 
 [vars]
 # INITIAL_SETUP_KEY and SESSION_SECRET are secrets; set them with `wrangler pages secret put`.
