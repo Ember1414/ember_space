@@ -10,6 +10,20 @@ database_name = "ember-db"
 database_id = "15023eb8-a0ad-4f0c-a137-0a80e607ce7b"
 migrations_dir = "migrations"
 
+# 图片上传支持两种存储，运行时自动选择（优先 R2，两者都未绑定则上传/读取返回 503）：
+# 1) R2：需在账户中添加付款方式后开通。
+# 2) KV：无需绑卡，免费额度（1GB 存储、单值 25MiB、每天约 1000 次写入）足够个人博客使用。
+#    创建命名空间：npx wrangler kv namespace create IMAGES_KV
+#    把命令输出的 id 填入下面 kv_namespaces 段并取消注释，然后重新部署。
+#
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "ember-images"
+#
+# [[kv_namespaces]]
+# binding = "IMAGES_KV"
+# id = "<wrangler kv namespace create 输出的 id>"
+
 [vars]
 # INITIAL_SETUP_KEY and SESSION_SECRET are secrets; set them with `wrangler pages secret put`.
 ENVIRONMENT = "production"

@@ -13,6 +13,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <div class="auth-message" data-login-message role="alert"></div>
       <button class="button button--primary" type="submit">登录</button>
     </form>
+    <div class="auth-divider" data-github-divider hidden><span>或</span></div>
+    <a class="button button--secondary auth-github" href="/api/auth/github/start" data-github-login hidden>使用 GitHub 登录</a>
     <p class="auth-foot"><a href="/">返回网站首页</a></p>
   </section>
 </AdminLayout>
@@ -38,6 +40,32 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (button) button.disabled = false;
     }
   });
+
+  // GitHub 登录：仅在服务端配置 OAuth 后显示入口
+  const githubLogin = document.querySelector<HTMLElement>('[data-github-login]');
+  const githubDivider = document.querySelector<HTMLElement>('[data-github-divider]');
+  void fetch('/api/auth/providers', { credentials: 'include' })
+    .then((response) => (response.ok ? response.json() as Promise<{ github?: boolean }> : null))
+    .then((data) => {
+      if (data?.github) {
+        githubLogin?.removeAttribute('hidden');
+        githubDivider?.removeAttribute('hidden');
+      }
+    })
+    .catch(() => {});
+
+  // OAuth 回调错误提示
+  const oauthErrors: Record<string, string> = {
+    'github-state': '登录状态校验失败，请重试。',
+    'github-denied': 'GitHub 授权已取消。',
+    'github-exchange': 'GitHub 授权验证失败，请重试。',
+    'github-unavailable': 'GitHub 登录暂时不可用。',
+    'github-disabled': '此账号已被停用，请联系站长。',
+  };
+  const oauthError = new URLSearchParams(window.location.search).get('error');
+  if (oauthError && loginMessage && oauthErrors[oauthError]) {
+    loginMessage.textContent = oauthErrors[oauthError];
+  }
 </script>
 
 <style>
@@ -49,5 +77,9 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
   .field label { color: var(--text-soft); font-size: 0.84rem; font-weight: 750; }
   .field input { width: 100%; padding: 0.7rem 0.75rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
   .auth-message { min-height: 1.4em; color: var(--accent-strong); font-size: 0.86rem; }
+  .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 14px; color: var(--text-muted); font-size: 0.78rem; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .auth-divider[hidden], .auth-github[hidden] { display: none; }
+  .auth-github { display: flex; justify-content: center; }
   .auth-foot { margin: 24px 0 0; color: var(--text-muted); font-size: 0.84rem; }
 </style>

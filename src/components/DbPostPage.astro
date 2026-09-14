@@ -3,13 +3,13 @@ import { ArrowLeft } from 'lucide-astro';
 import Giscus from './Giscus.astro';
 import PostReadingEnhancements from './PostReadingEnhancements.astro';
 import PostToc from './PostToc.astro';
-import type { PostRecord, PostSummary } from '../lib/db';
+import type { AuthorCard, PostRecord, PostSummary } from '../lib/db';
 import { t, tf, type Lang } from '../i18n/ui';
 import { buildPostToc } from '../lib/posts/toc';
 import '../styles/pages/post.css';
 
-interface Props { lang: Lang; post: PostRecord; posts?: PostSummary[]; }
-const { lang, post, posts = [] } = Astro.props;
+interface Props { lang: Lang; post: PostRecord; posts?: PostSummary[]; author?: AuthorCard | null; }
+const { lang, post, posts = [], author = null } = Astro.props;
 const base = lang === 'en' ? '/en' : '';
 const fmt = (value: string) => value.slice(0, 10);
 const minutes = Math.max(1, Math.round(post.bodyLength / 400));
@@ -42,6 +42,18 @@ const toc = buildPostToc(post.headings);
       {post.cover && <figure class="post-cover anim" data-pagefind-ignore><img src={post.cover} alt={post.coverAlt ?? ''} loading="eager" /></figure>}
       <div class="prose article-body anim" data-article-body data-heading-link-label={lang === 'zh' ? '链接到本节：' : 'Link to section: '} set:html={post.bodyHtml}></div>
     </div>
+    {author && (
+      <section class="author-card" aria-label={t(lang, 'post.author')} data-pagefind-ignore>
+        {author.avatarUrl
+          ? <img class="author-card-avatar" src={author.avatarUrl} alt="" width="56" height="56" loading="lazy" />
+          : <span class="author-card-avatar author-card-avatar--placeholder" aria-hidden="true">{author.displayName.slice(0, 1).toUpperCase()}</span>}
+        <div class="author-card-body">
+          <p class="author-card-label">{t(lang, 'post.author')}</p>
+          <p class="author-card-name">{author.displayName}</p>
+          {author.bio && <p class="author-card-bio">{author.bio}</p>}
+        </div>
+      </section>
+    )}
     {related.length > 0 && <section class="related-posts" aria-labelledby="related-posts-title" data-pagefind-ignore><h2 id="related-posts-title">{t(lang, 'post.related')}</h2><ul>{related.map((item) => <li><a href={`${base}/posts/${item.slug}/`}><span>{item.title}</span><time datetime={item.pubDate}>{fmt(item.pubDate)}</time></a></li>)}</ul></section>}
     {(older || newer) && <nav class="post-nav" aria-label={lang === 'zh' ? '文章导航' : 'Post navigation'} data-pagefind-ignore>{older ? <a class="post-nav-link post-nav-link--older" href={`${base}/posts/${older.slug}/`} rel="prev"><small>{t(lang, 'post.older')}</small><span>{older.title}</span></a> : <span></span>}{newer && <a class="post-nav-link post-nav-link--newer" href={`${base}/posts/${newer.slug}/`} rel="next"><small>{t(lang, 'post.newer')}</small><span>{newer.title}</span></a>}</nav>}
     <div data-pagefind-ignore><Giscus lang={lang} /></div>

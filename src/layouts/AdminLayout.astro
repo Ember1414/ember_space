@@ -43,7 +43,9 @@ const pageTitle = `${title} · ${SITE.title}`;
         {!minimal && <nav class="admin-nav" aria-label="后台导航">
           <a href="/admin/">文章</a>
           <a href="/admin/posts/new/">新建文章</a>
+          <a href="/admin/links/">网址</a>
           <a href="/admin/members/" data-owner-only hidden>成员</a>
+          <a href="/admin/settings/">设置</a>
           <span class="admin-session-message" data-admin-session-message role="status" aria-live="polite"></span>
           <button class="admin-logout" type="button" data-admin-logout>退出</button>
         </nav>}
@@ -68,8 +70,14 @@ const pageTitle = `${title} · ${SITE.title}`;
           return;
         }
         if (!response.ok) return;
-        const data = await response.json() as { user?: { role?: 'owner' | 'editor' } };
-        const isOwner = data.user?.role === 'owner';
+        const data = await response.json() as { user?: { role?: 'owner' | 'editor' | 'reader' } };
+        const role = data.user?.role;
+        // reader 是访客评论身份，一律挡在后台之外
+        if (role !== 'owner' && role !== 'editor') {
+          window.location.replace('/account/');
+          return;
+        }
+        const isOwner = role === 'owner';
         document.querySelectorAll<HTMLElement>('[data-owner-only]').forEach((element) => {
           element.hidden = !isOwner;
         });

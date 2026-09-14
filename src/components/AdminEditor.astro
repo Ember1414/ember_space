@@ -14,6 +14,7 @@ interface EditorPost {
   pubDate?: string;
   updatedDate?: string;
   version?: number;
+  authorId?: string | null;
 }
 
 interface Props {
@@ -37,6 +38,7 @@ const initial = {
   pubDate: post?.pubDate ? String(post.pubDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
   updatedDate: post?.updatedDate ? String(post.updatedDate).slice(0, 10) : '',
   version: post?.version ?? null,
+  authorId: post?.authorId ?? null,
 };
 const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
 ---
@@ -101,6 +103,23 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
   </div>
   <div class="editor-grid">
     <section class="editor-pane editor-pane--write" data-editor-pane="edit" aria-label="Markdown 编辑区">
+      <div class="md-toolbar" role="toolbar" aria-label="Markdown 工具栏">
+        <button type="button" class="md-tool" data-md="h2" title="二级标题">H2</button>
+        <button type="button" class="md-tool" data-md="h3" title="三级标题">H3</button>
+        <span class="md-sep" aria-hidden="true"></span>
+        <button type="button" class="md-tool" data-md="bold" title="粗体（Ctrl+B）"><strong>B</strong></button>
+        <button type="button" class="md-tool" data-md="italic" title="斜体（Ctrl+I）"><em>I</em></button>
+        <button type="button" class="md-tool" data-md="code" title="行内代码">`</button>
+        <span class="md-sep" aria-hidden="true"></span>
+        <button type="button" class="md-tool" data-md="quote" title="引用">引用</button>
+        <button type="button" class="md-tool" data-md="list" title="无序列表">列表</button>
+        <button type="button" class="md-tool" data-md="codeblock" title="代码块">代码块</button>
+        <button type="button" class="md-tool" data-md="hr" title="分割线">—</button>
+        <span class="md-sep" aria-hidden="true"></span>
+        <button type="button" class="md-tool" data-md="link" title="链接（Ctrl+K）">链接</button>
+        <button type="button" class="md-tool" data-md-image title="插入图片（也可粘贴或拖拽）">图片</button>
+        <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/avif" multiple hidden data-md-file />
+      </div>
       <label class="sr-only" for="post-content">Markdown 正文</label>
       <textarea id="post-content" name="content" class="markdown-input" spellcheck="false" placeholder={'# 开始写作\n\n支持 Markdown 标题、列表、引用、链接和代码块。'}></textarea>
     </section>
@@ -109,7 +128,7 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     </section>
   </div>
 
-  {(post || postId) && <button class="danger-link" type="button" data-delete data-owner-only hidden>删除这篇文章</button>}
+  {(post || postId) && <button class="danger-link" type="button" data-delete hidden>删除这篇文章</button>}
   <p class="autosave-hint" data-autosave-hint>草稿会在停止编辑后自动保存。</p>
 </form>
 
@@ -136,6 +155,7 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     pubDate: string;
     updatedDate?: string;
     version: number | null;
+    authorId?: string | null;
   }
 
   const initialData = document.querySelector<HTMLScriptElement>('[data-editor-initial]');
@@ -148,12 +168,21 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
   const draftButton = form.querySelector<HTMLButtonElement>('[data-save-draft]');
   const archiveButton = form.querySelector<HTMLButtonElement>('[data-archive]');
   const publishButton = form.querySelector<HTMLButtonElement>('[data-publish]');
+  const deleteButton = form.querySelector<HTMLButtonElement>('[data-delete]');
   const tabs = Array.from(form.querySelectorAll<HTMLButtonElement>('[data-editor-tab]'));
   const panes = Array.from(form.querySelectorAll<HTMLElement>('[data-editor-pane]'));
   let csrfToken = '';
+  let currentUser: { id?: string; role?: string } | null = null;
   const lifecycle = new EditorLifecycle(Boolean(initial.id && !initial.title));
   let autosaveTimer = 0;
   let previewTimer = 0;
+
+  // 删除按钮：所有者对所有文章可见；编辑只在自己名下的文章上可见（服务端同样强制校验）
+  function updateDeleteVisibility() {
+    if (!deleteButton || !initial.id) return;
+    const canDelete = Boolean(currentUser && (currentUser.role === 'owner' || (initial.authorId && initial.authorId === currentUser.id)));
+    deleteButton.hidden = !canDelete;
+  }
 
   function setInteractive(value: boolean) {
     form.inert = !value;
@@ -199,8 +228,10 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     try {
       const response = await fetch('/api/auth/me', { credentials: 'include' });
       if (response.ok) {
-        const data = await response.json() as { csrfToken?: string; csrf?: string };
+        const data = await response.json() as { csrfToken?: string; csrf?: string; user?: { id?: string; role?: string } };
         csrfToken = data.csrfToken || data.csrf || '';
+        currentUser = data.user ?? null;
+        updateDeleteVisibility();
       }
     } catch { /* API may be unavailable while editing locally. */ }
     return csrfToken;
@@ -218,6 +249,7 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
       window.clearTimeout(previewTimer);
       setFields(values);
       Object.assign(initial, values);
+      updateDeleteVisibility();
       lifecycle.loadSucceeded();
       setInteractive(true);
       setMessage('');
@@ -231,6 +263,8 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     }
   }
   loadExisting();
+  // 编辑已有文章时需要当前用户身份来决定删除按钮可见性
+  if (deleteButton) void getCsrf();
 
   function formData(statusOverride?: 'draft' | 'published' | 'archived') {
     const tags = (form.querySelector<HTMLInputElement>('#post-tags')?.value || '').split(',').map((tag) => tag.trim()).filter(Boolean);
@@ -379,6 +413,154 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
   const syncLayout = () => selectView(tabs.find((tab) => tab.classList.contains('is-active'))?.dataset.editorTab);
   mobileLayout.addEventListener('change', syncLayout);
   syncLayout();
+
+  // Markdown 工具栏：所有修改都通过 input 事件驱动预览与自动保存。
+  function notifyContentChanged() {
+    contentInput?.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function applySurround(before: string, after: string, placeholder: string) {
+    if (!contentInput) return;
+    const start = contentInput.selectionStart;
+    const end = contentInput.selectionEnd;
+    const selected = contentInput.value.slice(start, end);
+    const label = selected || placeholder;
+    const text = before + label + after;
+    contentInput.value = contentInput.value.slice(0, start) + text + contentInput.value.slice(end);
+    notifyContentChanged();
+    contentInput.focus();
+    if (selected) contentInput.setSelectionRange(start, start + text.length);
+    else contentInput.setSelectionRange(start + before.length, start + before.length + placeholder.length);
+  }
+
+  function applyLinePrefix(prefix: string) {
+    if (!contentInput) return;
+    const start = contentInput.selectionStart;
+    const end = contentInput.selectionEnd;
+    const value = contentInput.value;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const nextBreak = value.indexOf('\n', end);
+    const blockEnd = nextBreak === -1 ? value.length : nextBreak;
+    const block = value.slice(lineStart, blockEnd);
+    const prefixed = block.split('\n').map((line) => (line.trim() ? prefix + line : line)).join('\n');
+    contentInput.value = value.slice(0, lineStart) + prefixed + value.slice(blockEnd);
+    notifyContentChanged();
+    contentInput.focus();
+    contentInput.setSelectionRange(lineStart + prefix.length, lineStart + prefixed.length);
+  }
+
+  function applyLink() {
+    if (!contentInput) return;
+    const start = contentInput.selectionStart;
+    const selected = contentInput.value.slice(start, contentInput.selectionEnd);
+    const label = selected || '链接文字';
+    const text = `[${label}](https://)`;
+    contentInput.value = contentInput.value.slice(0, start) + text + contentInput.value.slice(contentInput.selectionEnd);
+    notifyContentChanged();
+    contentInput.focus();
+    if (selected) contentInput.setSelectionRange(start, start + text.length);
+    else contentInput.setSelectionRange(start + 1, start + 1 + label.length);
+  }
+
+  function insertBlock(text: string) {
+    if (!contentInput) return;
+    const start = contentInput.selectionStart;
+    const end = contentInput.selectionEnd;
+    const needsLeadingBreak = start > 0 && contentInput.value[start - 1] !== '\n';
+    const needsTrailingBreak = end < contentInput.value.length && contentInput.value[end] !== '\n';
+    const block = (needsLeadingBreak ? '\n\n' : '') + text + (needsTrailingBreak ? '\n\n' : '');
+    contentInput.value = contentInput.value.slice(0, start) + block + contentInput.value.slice(end);
+    notifyContentChanged();
+    contentInput.focus();
+    contentInput.setSelectionRange(start + block.length, start + block.length);
+  }
+
+  form.querySelectorAll<HTMLButtonElement>('[data-md]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const action = button.dataset.md;
+      if (action === 'h2') applyLinePrefix('## ');
+      else if (action === 'h3') applyLinePrefix('### ');
+      else if (action === 'quote') applyLinePrefix('> ');
+      else if (action === 'list') applyLinePrefix('- ');
+      else if (action === 'bold') applySurround('**', '**', '粗体文字');
+      else if (action === 'italic') applySurround('*', '*', '斜体文字');
+      else if (action === 'code') applySurround('`', '`', '代码');
+      else if (action === 'codeblock') applySurround('\n```\n', '\n```\n', '代码块');
+      else if (action === 'link') applyLink();
+      else if (action === 'hr') insertBlock('---');
+    });
+  });
+
+  contentInput?.addEventListener('keydown', (event) => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+    const key = event.key.toLowerCase();
+    if (key === 'b') { event.preventDefault(); applySurround('**', '**', '粗体文字'); }
+    else if (key === 'i') { event.preventDefault(); applySurround('*', '*', '斜体文字'); }
+    else if (key === 'k') { event.preventDefault(); applyLink(); }
+  });
+
+  // 图片上传：粘贴、拖拽与按钮三个通道共用同一逻辑。
+  let uploadSeq = 0;
+
+  function replaceMarker(marker: string, replacement: string) {
+    if (!contentInput) return;
+    const index = contentInput.value.indexOf(marker);
+    if (index === -1) return;
+    contentInput.value = contentInput.value.slice(0, index) + replacement + contentInput.value.slice(index + marker.length);
+    notifyContentChanged();
+  }
+
+  async function uploadImage(file: File) {
+    if (!contentInput) return;
+    if (file.size > 5 * 1024 * 1024) { setMessage('图片不能超过 5MB。', 'error'); return; }
+    const marker = `![上传中…](uploading-${++uploadSeq})`;
+    insertBlock(marker);
+    setMessage('正在上传图片…');
+    try {
+      const token = await getCsrf();
+      const body = new FormData();
+      body.append('file', file);
+      const response = await fetch('/api/images', {
+        method: 'POST',
+        credentials: 'include',
+        headers: token ? { 'x-csrf-token': token } : {},
+        body,
+      });
+      const data = await response.json().catch(() => ({})) as { url?: string; error?: string };
+      if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+      if (!response.ok || !data.url) throw new Error(data.error || `上传失败（${response.status}）`);
+      const alt = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 60) || '图片';
+      replaceMarker(marker, `![${alt}](${data.url})`);
+      setMessage('图片已上传。', 'success');
+    } catch (error) {
+      replaceMarker(marker, '');
+      setMessage(error instanceof Error ? error.message : '图片上传失败，请稍后重试。', 'error');
+    }
+  }
+
+  function uploadFiles(files: Iterable<File>) {
+    Array.from(files).filter((file) => file.type.startsWith('image/')).forEach((file) => { void uploadImage(file); });
+  }
+
+  const fileInput = form.querySelector<HTMLInputElement>('[data-md-file]');
+  form.querySelector<HTMLButtonElement>('[data-md-image]')?.addEventListener('click', () => fileInput?.click());
+  fileInput?.addEventListener('change', () => {
+    uploadFiles(fileInput.files ?? []);
+    fileInput.value = '';
+  });
+  contentInput?.addEventListener('paste', (event) => {
+    const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    uploadFiles(files);
+  });
+  contentInput?.addEventListener('dragover', (event) => event.preventDefault());
+  contentInput?.addEventListener('drop', (event) => {
+    const files = Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    uploadFiles(files);
+  });
 </script>
 
 <style>
@@ -406,6 +588,13 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
   .editor-tab.is-active { border-bottom-color: var(--accent); color: var(--text); }
   .editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .editor-pane { min-width: 0; min-height: 520px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+  .editor-pane--write { display: flex; flex-direction: column; }
+  .md-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .md-tool { min-width: 30px; min-height: 30px; padding: 0 7px; border: 0; border-radius: 4px; background: transparent; color: var(--text-soft); font: 700 0.78rem/1 var(--font-mono); cursor: pointer; }
+  .md-tool:hover { background: color-mix(in srgb, var(--border) 60%, transparent); color: var(--text); }
+  .md-tool:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .md-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+  .editor-pane--write .markdown-input { flex: 1; min-height: 472px; }
   .markdown-input { display: block; width: 100%; height: 100%; min-height: 520px; padding: 20px; border: 0; outline: 0; resize: vertical; background: transparent; color: var(--text); font: 0.9rem/1.75 var(--font-mono); }
   .preview-content { min-height: 520px; padding: 20px; }
   .preview-placeholder { color: var(--text-muted); }

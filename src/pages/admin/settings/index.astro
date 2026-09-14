@@ -1,0 +1,222 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="个人设置">
+  <div class="admin-page" data-settings-page>
+    <header class="admin-page-head"><div><p class="eyebrow">ACCOUNT / PROFILE</p><h1 class="page-title">个人设置</h1><p class="page-sub">头像、显示名与个人简介会展示在文章页的作者信息中。</p></div><a class="button button--secondary" href="/admin/">返回文章</a></header>
+    <div class="admin-message" data-settings-message role="status" aria-live="polite">正在加载…</div>
+    <div class="settings-grid">
+      <section class="card settings-panel" aria-labelledby="avatar-title">
+        <div class="panel-head"><h2 id="avatar-title">头像</h2></div>
+        <div class="avatar-panel">
+          <img class="avatar-preview" data-avatar-preview src="" alt="当前头像" hidden />
+          <span class="avatar-placeholder" data-avatar-placeholder aria-hidden="true"></span>
+          <div class="avatar-actions">
+            <button class="button button--secondary" type="button" data-avatar-button>更换头像</button>
+            <input type="file" accept="image/png,image/jpeg,image/webp" hidden data-avatar-input />
+            <small>选择图片后自动居中裁剪为方形并压缩到 256×256。</small>
+          </div>
+        </div>
+      </section>
+      <section class="card settings-panel" aria-labelledby="profile-title">
+        <div class="panel-head"><h2 id="profile-title">资料</h2></div>
+        <form class="profile-form" data-profile-form>
+          <div class="field"><label for="profile-name">显示名</label><input id="profile-name" name="displayName" maxlength="50" required autocomplete="off" /></div>
+          <div class="field"><label for="profile-bio">个人简介</label><textarea id="profile-bio" name="bio" rows="3" maxlength="160" placeholder="一句话介绍自己"></textarea></div>
+          <button class="button button--primary" type="submit">保存资料</button>
+        </form>
+      </section>
+      <section class="card settings-panel settings-panel--wide" aria-labelledby="github-title">
+        <div class="panel-head"><h2 id="github-title">GitHub 登录</h2></div>
+        <div class="github-panel">
+          <p data-github-status>正在检查绑定状态…</p>
+          <a class="button button--secondary" href="/api/auth/github/start?mode=link" data-github-link hidden>绑定 GitHub 账号</a>
+          <small>绑定后可以在登录页使用 GitHub 一键登录。一个 GitHub 账号只能绑定一个成员。</small>
+        </div>
+      </section>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  const page = document.querySelector<HTMLElement>('[data-settings-page]');
+  if (page) {
+    interface Profile {
+      displayName?: string;
+      bio?: string;
+      avatarUrl?: string | null;
+      githubBound?: boolean;
+    }
+    interface ApiError {
+      error?: string | { message?: string };
+      message?: string;
+    }
+
+    const message = page.querySelector<HTMLElement>('[data-settings-message]');
+    const preview = page.querySelector<HTMLImageElement>('[data-avatar-preview]');
+    const placeholder = page.querySelector<HTMLElement>('[data-avatar-placeholder]');
+    const avatarButton = page.querySelector<HTMLButtonElement>('[data-avatar-button]');
+    const avatarInput = page.querySelector<HTMLInputElement>('[data-avatar-input]');
+    const profileForm = page.querySelector<HTMLFormElement>('[data-profile-form]');
+    const nameInput = page.querySelector<HTMLInputElement>('#profile-name');
+    const bioInput = page.querySelector<HTMLTextAreaElement>('#profile-bio');
+    const githubStatus = page.querySelector<HTMLElement>('[data-github-status]');
+    const githubLink = page.querySelector<HTMLElement>('[data-github-link]');
+    let csrfToken = '';
+
+    const setMessage = (text: string, kind = '') => { if (message) { message.textContent = text; message.dataset.kind = kind; } };
+    const errorMessage = (data: ApiError, fallback: string) => typeof data.error === 'string' ? data.error : data.error?.message || data.message || fallback;
+
+    function renderAvatar(url: string | null | undefined, name: string) {
+      if (preview && url) {
+        preview.src = url;
+        preview.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+      } else if (placeholder) {
+        placeholder.textContent = (name || 'E').slice(0, 1).toUpperCase();
+        placeholder.hidden = false;
+        if (preview) preview.hidden = true;
+      }
+    }
+
+    async function load() {
+      try {
+        const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+        if (meResponse.status === 401) { window.location.href = '/admin/login/'; return; }
+        const me = meResponse.ok ? await meResponse.json() as { csrfToken?: string; csrf?: string } : {};
+        csrfToken = me.csrfToken || me.csrf || '';
+
+        const response = await fetch('/api/profile', { credentials: 'include' });
+        const data = await response.json().catch(() => ({})) as { profile?: Profile } & ApiError;
+        if (!response.ok || !data.profile) throw new Error(errorMessage(data, '资料读取失败。'));
+        if (nameInput) nameInput.value = data.profile.displayName || '';
+        if (bioInput) bioInput.value = data.profile.bio || '';
+        renderAvatar(data.profile.avatarUrl, data.profile.displayName || '');
+        if (githubStatus) githubStatus.textContent = data.profile.githubBound ? '已绑定 GitHub 账号，可以使用 GitHub 登录。' : '尚未绑定 GitHub 账号。';
+        if (githubLink && !data.profile.githubBound) githubLink.removeAttribute('hidden');
+        setMessage('');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : '资料暂时不可用。', 'error');
+      }
+    }
+
+    async function fileToAvatarBlob(file: File): Promise<Blob> {
+      const bitmap = await createImageBitmap(file);
+      const side = Math.min(bitmap.width, bitmap.height);
+      const sx = Math.floor((bitmap.width - side) / 2);
+      const sy = Math.floor((bitmap.height - side) / 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('当前浏览器不支持图片处理。');
+      context.drawImage(bitmap, sx, sy, side, side, 0, 0, 256, 256);
+      bitmap.close();
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('图片处理失败。'))), 'image/webp', 0.88);
+      });
+    }
+
+    avatarButton?.addEventListener('click', () => avatarInput?.click());
+    avatarInput?.addEventListener('change', async () => {
+      const file = avatarInput.files?.[0];
+      avatarInput.value = '';
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) { setMessage('原图不能超过 10MB。', 'error'); return; }
+      if (avatarButton) avatarButton.disabled = true;
+      setMessage('正在处理并上传头像…');
+      try {
+        const blob = await fileToAvatarBlob(file);
+        const body = new FormData();
+        body.append('file', new File([blob], 'avatar.webp', { type: 'image/webp' }));
+        const response = await fetch('/api/avatar', {
+          method: 'POST',
+          credentials: 'include',
+          headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
+          body,
+        });
+        const data = await response.json().catch(() => ({})) as { url?: string } & ApiError;
+        if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+        if (!response.ok || !data.url) throw new Error(errorMessage(data, '头像上传失败。'));
+        renderAvatar(data.url, nameInput?.value || '');
+        setMessage('头像已更新。', 'success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : '头像上传失败，请稍后重试。', 'error');
+      } finally {
+        if (avatarButton) avatarButton.disabled = false;
+      }
+    });
+
+    profileForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = profileForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (button) button.disabled = true;
+      setMessage('正在保存…');
+      try {
+        const response = await fetch('/api/profile', {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
+          body: JSON.stringify({ displayName: nameInput?.value ?? '', bio: bioInput?.value ?? '' }),
+        });
+        const data = await response.json().catch(() => ({})) as { profile?: Profile } & ApiError;
+        if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+        if (!response.ok) throw new Error(errorMessage(data, '保存失败。'));
+        renderAvatar(data.profile?.avatarUrl, data.profile?.displayName || '');
+        setMessage('资料已保存。', 'success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : '保存失败，请稍后重试。', 'error');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+
+    // GitHub 绑定回调结果
+    const callbackParams = new URLSearchParams(window.location.search);
+    if (callbackParams.get('linked') === 'github') {
+      setMessage('GitHub 账号绑定成功。', 'success');
+      window.history.replaceState({}, '', '/admin/settings/');
+    } else if (callbackParams.get('error') === 'github-taken') {
+      setMessage('该 GitHub 账号已被其他成员绑定。', 'error');
+      window.history.replaceState({}, '', '/admin/settings/');
+    }
+
+    load();
+  }
+</script>
+
+<style>
+  .admin-page-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+  .admin-page-head .page-title { margin: 0; }
+  .admin-page-head .page-sub { margin: 8px 0 0; color: var(--text-muted); }
+  .admin-message { min-height: 1.5em; margin-bottom: 18px; color: var(--text-muted); font-size: 0.86rem; }
+  .admin-message[data-kind='error'] { color: var(--accent-strong); }
+  .admin-message[data-kind='success'] { color: var(--success); }
+  .settings-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; }
+  .settings-panel { overflow: hidden; }
+  .settings-panel--wide { grid-column: 1 / -1; }
+  .github-panel { display: grid; gap: 12px; padding: 20px; justify-items: start; }
+  .github-panel p { margin: 0; font-size: 0.88rem; }
+  .github-panel small { color: var(--text-muted); font-size: 0.74rem; }
+  .panel-head { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .panel-head h2 { margin: 0; font-size: 1.3rem; }
+  .avatar-panel { display: flex; align-items: center; gap: 18px; padding: 20px; }
+  .avatar-preview, .avatar-placeholder { width: 96px; height: 96px; flex: 0 0 auto; border-radius: 50%; }
+  .avatar-preview { object-fit: cover; border: 1px solid var(--border); }
+  .avatar-placeholder { display: inline-grid; place-items: center; background: var(--surface-soft); color: var(--accent); font-size: 2rem; font-weight: 750; }
+  .avatar-actions { display: grid; gap: 8px; }
+  .avatar-actions small { color: var(--text-muted); font-size: 0.74rem; }
+  .profile-form { display: grid; gap: 16px; padding: 20px; }
+  .field { display: grid; gap: 6px; }
+  .field label { color: var(--text-soft); font-size: 0.82rem; font-weight: 750; }
+  .field input, .field textarea { width: 100%; padding: 0.65rem 0.72rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .field textarea { resize: vertical; }
+  .field input:focus, .field textarea:focus { border-color: var(--focus); outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent); }
+  .profile-form .button { justify-self: start; }
+  @media (max-width: 760px) {
+    .admin-page-head { align-items: start; flex-direction: column; }
+    .settings-grid { grid-template-columns: 1fr; }
+    .avatar-panel { align-items: flex-start; flex-direction: column; }
+  }
+</style>

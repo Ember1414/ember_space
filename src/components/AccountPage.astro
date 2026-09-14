@@ -1,0 +1,289 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t, type Lang } from '../i18n/ui';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+
+// 交给客户端脚本的动态文案（登录态在服务端不可知，面板显隐由脚本决定）
+const strings = {
+  saving: t(lang, 'account.saving'),
+  saved: t(lang, 'account.saved'),
+  saveFailed: t(lang, 'account.saveFailed'),
+  avatarUploading: t(lang, 'account.avatarUploading'),
+  avatarUpdated: t(lang, 'account.avatarUpdated'),
+  avatarFailed: t(lang, 'account.avatarFailed'),
+  avatarTooLarge: t(lang, 'account.avatarTooLarge'),
+  logoutFailed: t(lang, 'account.logoutFailed'),
+  loginUnavailable: t(lang, 'account.loginUnavailable'),
+  roles: {
+    reader: t(lang, 'account.role.reader'),
+    editor: t(lang, 'account.role.editor'),
+    owner: t(lang, 'account.role.owner'),
+  },
+  oauthErrors: {
+    'github-state': t(lang, 'account.error.github-state'),
+    'github-denied': t(lang, 'account.error.github-denied'),
+    'github-exchange': t(lang, 'account.error.github-exchange'),
+    'github-unavailable': t(lang, 'account.error.github-unavailable'),
+    'github-disabled': t(lang, 'account.error.github-disabled'),
+  } as Record<string, string>,
+};
+---
+
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'account.title')}
+  description={t(lang, 'account.subtitle')}
+  noindex
+  canonicalPath={`${base}/account/`}
+  alternatePath={lang === 'zh' ? '/en/account/' : '/account/'}
+>
+  <section class="account-page" data-account-page>
+    <header class="account-head anim">
+      <p class="eyebrow">ACCOUNT</p>
+      <h1 class="page-title">{t(lang, 'account.title')}</h1>
+      <p class="account-sub">{t(lang, 'account.subtitle')}</p>
+    </header>
+
+    <p class="account-message" data-account-message role="status" aria-live="polite">{t(lang, 'account.loading')}</p>
+
+    <div class="card account-panel" data-login-panel hidden>
+      <a class="button button--primary" href="/api/auth/github/start" data-github-login>{t(lang, 'account.login')}</a>
+      <p class="account-hint">{t(lang, 'account.commentsHint')}</p>
+      <p class="account-hint"><a href="/admin/login/">{t(lang, 'account.adminLogin')}</a></p>
+    </div>
+
+    <div class="card account-panel" data-profile-panel hidden>
+      <div class="account-profile">
+        <img class="account-avatar" data-avatar-preview src="" alt={t(lang, 'account.avatar')} hidden />
+        <span class="account-avatar account-avatar--placeholder" data-avatar-placeholder aria-hidden="true"></span>
+        <form class="account-form" data-profile-form>
+          <label class="account-field">
+            <span>{t(lang, 'account.displayName')}</span>
+            <input name="displayName" maxlength="50" required autocomplete="off" data-name-input />
+          </label>
+          <p class="account-role">{t(lang, 'account.roleLabel')}：<strong data-role-label></strong></p>
+          <div class="account-actions">
+            <button class="button button--primary" type="submit">{t(lang, 'account.save')}</button>
+            <button class="button button--secondary" type="button" data-avatar-button>{t(lang, 'account.changeAvatar')}</button>
+            <input type="file" accept="image/png,image/jpeg,image/webp" hidden data-avatar-input />
+          </div>
+          <small class="account-hint">{t(lang, 'account.avatarHint')}</small>
+        </form>
+      </div>
+      <div class="account-foot">
+        <a href="/admin/" data-admin-entry hidden>{t(lang, 'account.adminEntry')} →</a>
+        <button class="account-logout" type="button" data-logout>{t(lang, 'account.logout')}</button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline define:vars={{ strings }}>
+  (function () {
+    var page = document.querySelector('[data-account-page]');
+    if (!page) return;
+    var message = page.querySelector('[data-account-message]');
+    var loginPanel = page.querySelector('[data-login-panel]');
+    var profilePanel = page.querySelector('[data-profile-panel]');
+    var githubLogin = page.querySelector('[data-github-login]');
+    var preview = page.querySelector('[data-avatar-preview]');
+    var placeholder = page.querySelector('[data-avatar-placeholder]');
+    var avatarButton = page.querySelector('[data-avatar-button]');
+    var avatarInput = page.querySelector('[data-avatar-input]');
+    var profileForm = page.querySelector('[data-profile-form]');
+    var nameInput = page.querySelector('[data-name-input]');
+    var roleLabel = page.querySelector('[data-role-label]');
+    var adminEntry = page.querySelector('[data-admin-entry]');
+    var logoutButton = page.querySelector('[data-logout]');
+    var csrfToken = '';
+
+    function setMessage(text, kind) {
+      if (!message) return;
+      message.textContent = text;
+      message.dataset.kind = kind || '';
+      message.hidden = !text;
+    }
+
+    function renderAvatar(url, name) {
+      if (preview && url) {
+        preview.src = url;
+        preview.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+      } else if (placeholder) {
+        placeholder.textContent = (name || 'E').slice(0, 1).toUpperCase();
+        placeholder.hidden = false;
+        if (preview) preview.hidden = true;
+      }
+    }
+
+    function showPanel(panel) {
+      if (loginPanel) loginPanel.hidden = panel !== 'login';
+      if (profilePanel) profilePanel.hidden = panel !== 'profile';
+    }
+
+    function fileToAvatarBlob(file) {
+      return createImageBitmap(file).then(function (bitmap) {
+        var side = Math.min(bitmap.width, bitmap.height);
+        var sx = Math.floor((bitmap.width - side) / 2);
+        var sy = Math.floor((bitmap.height - side) / 2);
+        var canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        var context = canvas.getContext('2d');
+        if (!context) throw new Error('canvas');
+        context.drawImage(bitmap, sx, sy, side, side, 0, 0, 256, 256);
+        bitmap.close();
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob); else reject(new Error('blob'));
+          }, 'image/webp', 0.88);
+        });
+      });
+    }
+
+    // OAuth 回调错误提示（/?error=github-*）
+    var errorCode = new URLSearchParams(window.location.search).get('error');
+    var initialError = errorCode && strings.oauthErrors[errorCode] ? strings.oauthErrors[errorCode] : '';
+
+    async function load() {
+      try {
+        var meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+        if (meResponse.status === 401) {
+          showPanel('login');
+          // 服务端未配置 OAuth 时隐藏登录按钮
+          var providers = await fetch('/api/auth/providers', { credentials: 'include' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; });
+          if (!providers || !providers.github) {
+            if (githubLogin) githubLogin.hidden = true;
+            setMessage(initialError || strings.loginUnavailable, 'error');
+            return;
+          }
+          setMessage(initialError, initialError ? 'error' : '');
+          return;
+        }
+        if (!meResponse.ok) throw new Error('me');
+        var me = await meResponse.json();
+        csrfToken = typeof me.csrfToken === 'string' ? me.csrfToken : '';
+        var user = me.user || {};
+
+        var profileResponse = await fetch('/api/profile', { credentials: 'include' });
+        var profileData = await profileResponse.json().catch(function () { return {}; });
+        var profile = profileData.profile || {};
+
+        if (nameInput) nameInput.value = profile.displayName || user.displayName || '';
+        renderAvatar(profile.avatarUrl || null, profile.displayName || user.displayName || '');
+        if (roleLabel) roleLabel.textContent = strings.roles[user.role] || user.role || '';
+        if (adminEntry && (user.role === 'owner' || user.role === 'editor')) adminEntry.hidden = false;
+        showPanel('profile');
+        setMessage(initialError, initialError ? 'error' : '');
+      } catch (error) {
+        showPanel('login');
+        setMessage(initialError || strings.loginUnavailable, 'error');
+      }
+    }
+
+    profileForm && profileForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      var button = profileForm.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+      setMessage(strings.saving);
+      try {
+        var response = await fetch('/api/profile', {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+          body: JSON.stringify({ displayName: nameInput ? nameInput.value : '' }),
+        });
+        var data = await response.json().catch(function () { return {}; });
+        if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : strings.saveFailed);
+        renderAvatar(data.profile && data.profile.avatarUrl, data.profile && data.profile.displayName || '');
+        setMessage(strings.saved, 'success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : strings.saveFailed, 'error');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+
+    avatarButton && avatarButton.addEventListener('click', function () { avatarInput && avatarInput.click(); });
+    avatarInput && avatarInput.addEventListener('change', async function () {
+      var file = avatarInput.files && avatarInput.files[0];
+      avatarInput.value = '';
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) { setMessage(strings.avatarTooLarge, 'error'); return; }
+      if (avatarButton) avatarButton.disabled = true;
+      setMessage(strings.avatarUploading);
+      try {
+        var blob = await fileToAvatarBlob(file);
+        var body = new FormData();
+        body.append('file', new File([blob], 'avatar.webp', { type: 'image/webp' }));
+        var response = await fetch('/api/avatar', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'x-csrf-token': csrfToken },
+          body: body,
+        });
+        var data = await response.json().catch(function () { return {}; });
+        if (!response.ok || !data.url) throw new Error(typeof data.error === 'string' ? data.error : strings.avatarFailed);
+        renderAvatar(data.url, nameInput ? nameInput.value : '');
+        setMessage(strings.avatarUpdated, 'success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : strings.avatarFailed, 'error');
+      } finally {
+        if (avatarButton) avatarButton.disabled = false;
+      }
+    });
+
+    logoutButton && logoutButton.addEventListener('click', async function () {
+      logoutButton.disabled = true;
+      try {
+        var response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'x-csrf-token': csrfToken },
+        });
+        if (!response.ok) throw new Error('logout');
+        window.location.reload();
+      } catch (error) {
+        setMessage(strings.logoutFailed, 'error');
+        logoutButton.disabled = false;
+      }
+    });
+
+    load();
+  })();
+</script>
+
+<style>
+  .account-page { padding-block: 32px 64px; }
+  .account-head { margin-bottom: 20px; }
+  .account-head .page-title { margin: 0; }
+  .account-sub { margin: 10px 0 0; max-width: 56ch; color: var(--text-muted); }
+  .account-message { min-height: 1.5em; margin: 0 0 16px; color: var(--text-muted); font-size: 0.88rem; }
+  .account-message[data-kind='error'] { color: var(--accent-strong); }
+  .account-message[data-kind='success'] { color: var(--success); }
+  .account-panel { display: grid; gap: 14px; max-width: 560px; padding: 24px; justify-items: start; }
+  .account-hint { margin: 0; color: var(--text-muted); font-size: 0.78rem; }
+  .account-profile { display: flex; align-items: flex-start; gap: 20px; width: 100%; }
+  .account-avatar { width: 96px; height: 96px; flex: 0 0 auto; border-radius: 50%; }
+  img.account-avatar { object-fit: cover; border: 1px solid var(--border); }
+  .account-avatar--placeholder { display: inline-grid; place-items: center; background: var(--surface-soft); color: var(--accent); font-size: 2rem; font-weight: 750; }
+  .account-form { display: grid; flex: 1; gap: 14px; min-width: 0; }
+  .account-field { display: grid; gap: 6px; }
+  .account-field span { color: var(--text-soft); font-size: 0.82rem; font-weight: 750; }
+  .account-field input { width: 100%; padding: 0.65rem 0.72rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); }
+  .account-field input:focus { border-color: var(--focus); outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent); }
+  .account-role { margin: 0; color: var(--text-muted); font-size: 0.84rem; }
+  .account-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .account-foot { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .account-foot a { font-size: 0.84rem; }
+  .account-logout { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 0.84rem; padding: 0; }
+  .account-logout:hover { color: var(--accent-strong); }
+  @media (max-width: 560px) {
+    .account-profile { flex-direction: column; }
+  }
+</style>

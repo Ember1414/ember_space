@@ -259,3 +259,62 @@
     opacity: 0.62;
   }
 }
+
+:where(.post-layout) .author-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 48px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+:where(.post-layout) .author-card-avatar {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+:where(.post-layout) img.author-card-avatar {
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+:where(.post-layout) .author-card-avatar--placeholder {
+  display: inline-grid;
+  place-items: center;
+  background: var(--surface-soft);
+  color: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 750;
+}
+
+:where(.post-layout) .author-card-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+:where(.post-layout) .author-card-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:where(.post-layout) .author-card-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+:where(.post-layout) .author-card-bio {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

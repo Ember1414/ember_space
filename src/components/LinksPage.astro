@@ -1,0 +1,81 @@
+---
+import { ExternalLink } from 'lucide-astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t, type Lang } from '../i18n/ui';
+import { runtimeEnv } from '../lib/db';
+import { getAllLinks, LINK_CATEGORIES } from '../lib/links';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const base = lang === 'en' ? '/en' : '';
+
+const links = await getAllLinks(runtimeEnv(Astro.locals)?.DB ?? null);
+const byCategory = new Map(LINK_CATEGORIES.map((category) => [category, links.filter((link) => link.category === category)] as const));
+const domain = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
+---
+
+<BaseLayout
+  lang={lang}
+  title={t(lang, 'links.title')}
+  description={t(lang, 'links.subtitle')}
+  canonicalPath={`${base}/links/`}
+  alternatePath={lang === 'zh' ? '/en/links/' : '/links/'}
+>
+  <div class="links-page" data-pagefind-body data-pagefind-filter={`lang:${lang}`} data-pagefind-meta={`lang:${lang}`}>
+    <header class="page-intro anim">
+      <p class="eyebrow">LINKS / {lang === 'zh' ? '收藏' : 'COLLECTION'}</p>
+      <h1 class="page-title">{t(lang, 'links.title')}</h1>
+      <p class="page-sub">{t(lang, 'links.subtitle')}</p>
+    </header>
+
+    {links.length === 0 ? (
+      <div class="empty-state"><p>{t(lang, 'links.empty')}</p></div>
+    ) : (
+      LINK_CATEGORIES.map((category) => {
+        const items = byCategory.get(category) ?? [];
+        if (items.length === 0) return null;
+        return (
+          <section class="links-section anim" aria-labelledby={`links-${category}-${lang}`}>
+            <header class="section-head">
+              <h2 id={`links-${category}-${lang}`}>{t(lang, `links.cat.${category}`)}</h2>
+            </header>
+            <ul class="link-list" role="list">
+              {items.map((link) => (
+                <li>
+                  <a class="card link-card" href={link.url} target="_blank" rel="noopener noreferrer">
+                    <span class="link-card-main">
+                      <strong>{link.title}</strong>
+                      {link.description && <span class="link-card-desc">{link.description}</span>}
+                    </span>
+                    <span class="link-card-domain">{domain(link.url)}<ExternalLink size={14} stroke-width={1.8} aria-hidden="true" /></span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .links-page { width: 100%; }
+  .links-section + .links-section { margin-top: 48px; }
+  .link-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .link-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; text-decoration: none; }
+  .link-card-main { display: grid; gap: 4px; min-width: 0; }
+  .link-card-main strong { font-size: 1rem; }
+  .link-card-desc { color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; }
+  .link-card-domain { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem; }
+  .link-card:hover .link-card-domain { color: var(--accent); }
+  @media (max-width: 560px) {
+    .link-card { align-items: flex-start; flex-direction: column; gap: 8px; }
+  }
+</style>

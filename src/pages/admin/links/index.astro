@@ -1,0 +1,273 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+export const prerender = false;
+---
+
+<AdminLayout title="网址管理">
+  <div class="links-admin">
+    <header class="admin-head">
+      <p class="eyebrow">LINKS</p>
+      <h1 class="page-title">网址管理</h1>
+      <p class="admin-sub">这里收录的网址会按分类展示在前台「网址」页面，中英站共用同一份列表。</p>
+    </header>
+
+    <section class="card links-form-card" aria-labelledby="link-form-title">
+      <h2 id="link-form-title" data-form-title>添加网址</h2>
+      <form data-link-form novalidate>
+        <input type="hidden" data-field-id />
+        <div class="field-grid">
+          <label class="field">
+            <span>标题</span>
+            <input maxlength="100" required autocomplete="off" data-field-title />
+          </label>
+          <label class="field">
+            <span>链接</span>
+            <input type="url" maxlength="2048" required placeholder="https://" autocomplete="off" data-field-url />
+          </label>
+          <label class="field">
+            <span>分类</span>
+            <select data-field-category>
+              <option value="mine">我的作品</option>
+              <option value="favorite" selected>宝藏网站</option>
+              <option value="resource">资料</option>
+            </select>
+          </label>
+          <label class="field field--full">
+            <span>简介（可选）</span>
+            <textarea rows="2" maxlength="500" data-field-description></textarea>
+          </label>
+        </div>
+        <div class="button-row">
+          <button class="button button--primary" type="submit" data-submit>添加网址</button>
+          <button class="button button--secondary" type="button" data-cancel-edit hidden>取消编辑</button>
+        </div>
+      </form>
+    </section>
+
+    <p class="links-message" data-message role="status" aria-live="polite">正在读取网址列表…</p>
+    <section class="links-list" data-list aria-label="已收录网址"></section>
+  </div>
+</AdminLayout>
+
+<script is:inline>
+  (function () {
+    var form = document.querySelector('[data-link-form]');
+    var list = document.querySelector('[data-list]');
+    var message = document.querySelector('[data-message]');
+    if (!form || !list || !message) return;
+    var formTitle = document.querySelector('[data-form-title]');
+    var submitButton = form.querySelector('[data-submit]');
+    var cancelButton = form.querySelector('[data-cancel-edit]');
+    var fieldId = form.querySelector('[data-field-id]');
+    var fieldTitle = form.querySelector('[data-field-title]');
+    var fieldUrl = form.querySelector('[data-field-url]');
+    var fieldCategory = form.querySelector('[data-field-category]');
+    var fieldDescription = form.querySelector('[data-field-description]');
+    var csrfToken = '';
+    var links = [];
+
+    var categoryNames = { mine: '我的作品', favorite: '宝藏网站', resource: '资料' };
+
+    function setMessage(text, kind) {
+      message.textContent = text;
+      message.dataset.kind = kind || '';
+      message.hidden = !text;
+    }
+
+    function domain(url) {
+      try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
+    }
+
+    function resetForm() {
+      fieldId.value = '';
+      fieldTitle.value = '';
+      fieldUrl.value = '';
+      fieldCategory.value = 'favorite';
+      fieldDescription.value = '';
+      formTitle.textContent = '添加网址';
+      submitButton.textContent = '添加网址';
+      cancelButton.hidden = true;
+    }
+
+    function startEdit(link) {
+      fieldId.value = link.id;
+      fieldTitle.value = link.title;
+      fieldUrl.value = link.url;
+      fieldCategory.value = link.category;
+      fieldDescription.value = link.description || '';
+      formTitle.textContent = '编辑网址';
+      submitButton.textContent = '保存修改';
+      cancelButton.hidden = false;
+      form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      fieldTitle.focus();
+    }
+
+    function render() {
+      list.textContent = '';
+      if (links.length === 0) {
+        var empty = document.createElement('p');
+        empty.className = 'links-empty';
+        empty.textContent = '还没有收录网址。';
+        list.appendChild(empty);
+        return;
+      }
+      links.forEach(function (link) {
+        var row = document.createElement('div');
+        row.className = 'card link-row';
+
+        var main = document.createElement('div');
+        main.className = 'link-row-main';
+        var head = document.createElement('div');
+        head.className = 'link-row-head';
+        var title = document.createElement('strong');
+        title.textContent = link.title;
+        var badge = document.createElement('span');
+        badge.className = 'link-badge';
+        badge.textContent = categoryNames[link.category] || link.category;
+        head.appendChild(title);
+        head.appendChild(badge);
+        var anchor = document.createElement('a');
+        anchor.className = 'link-row-url';
+        anchor.href = link.url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.textContent = domain(link.url);
+        main.appendChild(head);
+        main.appendChild(anchor);
+        if (link.description) {
+          var desc = document.createElement('p');
+          desc.className = 'link-row-desc';
+          desc.textContent = link.description;
+          main.appendChild(desc);
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'link-row-actions';
+        var edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'button button--secondary';
+        edit.textContent = '编辑';
+        edit.addEventListener('click', function () { startEdit(link); });
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'button button--secondary link-remove';
+        remove.textContent = '删除';
+        remove.addEventListener('click', async function () {
+          if (!window.confirm('确定删除「' + link.title + '」吗？')) return;
+          remove.disabled = true;
+          try {
+            var response = await fetch('/api/links/' + encodeURIComponent(link.id), {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: { 'x-csrf-token': csrfToken },
+            });
+            if (!response.ok) throw new Error('delete');
+            links = links.filter(function (item) { return item.id !== link.id; });
+            if (fieldId.value === link.id) resetForm();
+            render();
+            setMessage('网址已删除。', 'success');
+          } catch (error) {
+            setMessage('删除失败，请稍后重试。', 'error');
+            remove.disabled = false;
+          }
+        });
+        actions.appendChild(edit);
+        actions.appendChild(remove);
+
+        row.appendChild(main);
+        row.appendChild(actions);
+        list.appendChild(row);
+      });
+    }
+
+    cancelButton.addEventListener('click', resetForm);
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      var payload = {
+        title: fieldTitle.value,
+        url: fieldUrl.value,
+        category: fieldCategory.value,
+        description: fieldDescription.value,
+      };
+      var id = fieldId.value;
+      submitButton.disabled = true;
+      setMessage(id ? '正在保存修改…' : '正在添加…');
+      try {
+        var response = await fetch(id ? '/api/links/' + encodeURIComponent(id) : '/api/links', {
+          method: id ? 'PATCH' : 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+          body: JSON.stringify(payload),
+        });
+        var data = await response.json().catch(function () { return {}; });
+        if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : '保存失败，请稍后重试。');
+        await load();
+        resetForm();
+        setMessage(id ? '修改已保存。' : '网址已添加。', 'success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : '保存失败，请稍后重试。', 'error');
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    async function load() {
+      var response = await fetch('/api/links', { credentials: 'include' });
+      if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+      if (!response.ok) throw new Error('load');
+      var data = await response.json();
+      links = Array.isArray(data.links) ? data.links : [];
+      render();
+    }
+
+    (async function init() {
+      try {
+        var me = await fetch('/api/auth/me', { credentials: 'include' });
+        if (me.status === 401) { window.location.href = '/admin/login/'; return; }
+        var meData = await me.json();
+        csrfToken = typeof meData.csrfToken === 'string' ? meData.csrfToken : '';
+        await load();
+        setMessage('');
+      } catch (error) {
+        setMessage('网址列表读取失败，请刷新重试。', 'error');
+      }
+    })();
+  })();
+</script>
+
+<style>
+  .links-admin { display: grid; gap: 24px; }
+  .admin-head .page-title { margin: 0; }
+  .admin-sub { margin: 8px 0 0; color: var(--text-muted); }
+  .links-form-card { display: grid; gap: 16px; padding: 24px; }
+  .links-form-card h2 { margin: 0; font-size: 1.05rem; }
+  .field-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .field--full { grid-column: 1 / -1; }
+  .field { display: grid; gap: 6px; }
+  .field span { color: var(--text-soft); font-size: 0.82rem; font-weight: 750; }
+  .field input,
+  .field select,
+  .field textarea { width: 100%; padding: 0.65rem 0.72rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; }
+  .field textarea { resize: vertical; }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus { border-color: var(--focus); outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent); }
+  .links-message { min-height: 1.5em; margin: 0; color: var(--text-muted); font-size: 0.88rem; }
+  .links-message[data-kind='error'] { color: var(--accent-strong); }
+  .links-message[data-kind='success'] { color: var(--success); }
+  .links-list { display: grid; gap: 12px; }
+  .links-empty { margin: 0; color: var(--text-muted); }
+  .link-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; }
+  .link-row-main { display: grid; gap: 4px; min-width: 0; }
+  .link-row-head { display: flex; align-items: center; gap: 10px; }
+  .link-badge { padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; }
+  .link-row-url { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem; }
+  .link-row-desc { margin: 0; color: var(--text-muted); font-size: 0.85rem; }
+  .link-row-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+  .link-remove:hover { border-color: var(--accent-strong); color: var(--accent-strong); }
+  @media (max-width: 560px) {
+    .link-row { align-items: flex-start; flex-direction: column; }
+  }
+</style>

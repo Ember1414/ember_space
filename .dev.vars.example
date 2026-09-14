@@ -1,3 +1,7 @@
 # Copy to .dev.vars for local development only. Use independent, high-entropy values.
 INITIAL_SETUP_KEY=replace-with-a-random-local-setup-key
 SESSION_SECRET=replace-with-a-different-random-local-session-secret
+# GitHub OAuth（可选）：在 GitHub → Settings → Developer settings → OAuth Apps 创建后填入。
+# 留空时登录页不显示 GitHub 入口，功能自动隐藏。
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=

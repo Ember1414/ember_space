@@ -1,5 +1,5 @@
 ---
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
 import { ExternalLink, Github } from 'lucide-astro';
 import { SITE } from '../consts';
 import { t, type Lang } from '../i18n/ui';
@@ -17,42 +17,23 @@ const projects = (await getCollection('projects', ({ data }) => data.lang === la
   .sort((a, b) => a.data.order - b.data.order || b.data.year - a.data.year);
 const repos = await getGitHubRepos();
 
-type CatalogItem =
-  | { kind: 'project'; project: CollectionEntry<'projects'>; repo: Repo | null }
-  | { kind: 'repo'; repo: Repo };
-
-const projectsByRepository = new Map(
-  projects.flatMap((project) => {
-    const key = repositoryUrlKey(project.data.repo);
-    return key ? [[key, project] as const] : [];
+// 精选项目（内容库策划）永远排在自动同步的 GitHub 仓库之前；同一仓库不重复出现
+const repoByKey = new Map(repos.map((repo) => [repositoryUrlKey(repo.html_url) ?? '', repo] as const));
+const curated: { project: (typeof projects)[number]; repo: Repo | null }[] = projects.map((project) => ({
+  project,
+  repo: repoByKey.get(repositoryUrlKey(project.data.repo) ?? '') ?? null,
+}));
+const curatedRepoKeys = new Set(
+  curated.flatMap(({ repo }) => {
+    const key = repo ? repositoryUrlKey(repo.html_url) : null;
+    return key ? [key] : [];
   }),
 );
-const matchedProjectIds = new Set<string>();
-const catalog: CatalogItem[] = repos.map((repo) => {
-  const project = projectsByRepository.get(repositoryUrlKey(repo.html_url) ?? '');
-  if (!project) return { kind: 'repo', repo };
-  matchedProjectIds.add(project.id);
-  return { kind: 'project', project, repo };
-});
-catalog.push(
-  ...projects
-    .filter(({ id }) => !matchedProjectIds.has(id))
-    .map((project): CatalogItem => ({ kind: 'project', project, repo: null })),
-);
+const uncuratedRepos = repos.filter((repo) => !curatedRepoKeys.has(repositoryUrlKey(repo.html_url) ?? ''));
 
 const labels = isZh
-  ? {
-      eyebrow: 'PROJECTS / 构建记录',
-      all: '全部项目',
-      emptyTitle: '项目列表暂时不可用',
-      emptyText: '你仍可前往 GitHub 查看全部公开仓库。',
-    }
-  : {
-      eyebrow: 'PROJECTS / BUILD NOTES',
-      all: 'All projects',
-      emptyTitle: 'Project data is unavailable',
-      emptyText: 'You can still browse every public repository on GitHub.',
-    };
+  ? { eyebrow: 'PROJECTS / 构建记录', emptyTitle: '项目列表暂时不可用', emptyText: '你仍可前往 GitHub 查看全部公开仓库。' }
+  : { eyebrow: 'PROJECTS / BUILD NOTES', emptyTitle: 'Project data is unavailable', emptyText: 'You can still browse every public repository on GitHub.' };
 ---
 
 <BaseLayout
@@ -70,36 +51,49 @@ const labels = isZh
         <p class="page-sub">{t(lang, 'projects.subtitle')}</p>
       </header>
 
-      <section class="projects-section anim" aria-labelledby={`all-projects-${lang}`}>
-        <header class="section-head">
-          <div>
-            <p class="eyebrow"><Github size={15} aria-hidden="true" /> OPEN SOURCE / GITHUB</p>
-            <h2 id={`all-projects-${lang}`}>{labels.all}</h2>
-          </div>
-          <a class="section-link github-link" href={SITE.social.github} target="_blank" rel="noopener">{t(lang, 'projects.allOnGithub')}<ExternalLink size={16} aria-hidden="true" /></a>
-        </header>
-
-        {catalog.length > 0 ? (
+      {curated.length > 0 && (
+        <section class="projects-section anim" aria-labelledby={`featured-projects-${lang}`}>
+          <header class="section-head">
+            <h2 id={`featured-projects-${lang}`}>{t(lang, 'projects.featured')}</h2>
+          </header>
           <div class="project-grid">
-            {catalog.map((item) => item.kind === 'project'
-              ? <ProjectCard
-                  project={item.project}
-                  lang={lang}
-                  updatedAt={item.repo?.pushed_at}
-                  stars={item.repo?.stargazers_count}
-                />
-              : <RepoCard repo={item.repo} lang={lang} />)}
+            {curated.map(({ project, repo }) => (
+              <ProjectCard
+                project={project}
+                lang={lang}
+                updatedAt={repo?.pushed_at}
+                stars={repo?.stargazers_count}
+              />
+            ))}
           </div>
-        ) : (
-          <div class="empty-state"><h3>{labels.emptyTitle}</h3><p>{labels.emptyText}</p></div>
-        )}
-      </section>
+        </section>
+      )}
+
+      {uncuratedRepos.length > 0 && (
+        <section class="projects-section anim" aria-labelledby={`repo-list-${lang}`}>
+          <header class="section-head">
+            <div>
+              <p class="eyebrow"><Github size={15} aria-hidden="true" /> {t(lang, 'projects.reposEyebrow')}</p>
+              <h2 id={`repo-list-${lang}`}>{t(lang, 'projects.repos')}</h2>
+            </div>
+            <a class="section-link github-link" href={SITE.social.github} target="_blank" rel="noopener">{t(lang, 'projects.allOnGithub')}<ExternalLink size={16} aria-hidden="true" /></a>
+          </header>
+          <div class="project-grid">
+            {uncuratedRepos.map((repo) => <RepoCard repo={repo} lang={lang} />)}
+          </div>
+        </section>
+      )}
+
+      {curated.length === 0 && uncuratedRepos.length === 0 && (
+        <div class="empty-state"><h3>{labels.emptyTitle}</h3><p>{labels.emptyText}</p></div>
+      )}
     </div>
   </div>
 </BaseLayout>
 
 <style>
   .projects-page { width: 100%; }
+  .projects-section + .projects-section { margin-top: 56px; }
   .section-head .eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 0.45rem; }
   .github-link { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; font-weight: 700; }
 </style>

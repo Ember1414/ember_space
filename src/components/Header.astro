@@ -1,5 +1,5 @@
 ---
-import { Menu, Moon, Search, Sun, X } from 'lucide-astro';
+import { Menu, Moon, Search, Sun, User, X } from 'lucide-astro';
 import { t, type Lang } from '../i18n/ui';
 
 interface Props {
@@ -14,6 +14,7 @@ const path = Astro.url.pathname;
 const links = [
   { href: `${base}/posts/`, label: t(lang, 'nav.posts') },
   { href: `${base}/projects/`, label: t(lang, 'nav.projects') },
+  { href: `${base}/links/`, label: t(lang, 'nav.links') },
   { href: `${base}/about/`, label: t(lang, 'nav.about') },
 ] as const;
 
@@ -46,6 +47,9 @@ const languageLabel = lang === 'zh' ? 'EN' : '中';
           {languageLabel}
         </a>
       )}
+      <a class="icon-button account-button" href={`${base}/account/`} aria-label={t(lang, 'nav.account')} title={t(lang, 'nav.account')}>
+        <User size={18} stroke-width={1.8} aria-hidden="true" />
+      </a>
       <button
         class="icon-button js-theme-toggle"
         type="button"
@@ -80,6 +84,7 @@ const languageLabel = lang === 'zh' ? 'EN' : '中';
   </nav>
   <div class="mobile-menu-foot">
     {languageHref && <a href={languageHref}>{t(lang, 'a11y.switchLanguage')}</a>}
+    <a href={`${base}/account/`}>{t(lang, 'nav.account')}</a>
     <a href={`${base}/rss/`}>RSS</a>
   </div>
 </dialog>

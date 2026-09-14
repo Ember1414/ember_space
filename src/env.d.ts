@@ -5,6 +5,8 @@ declare global {
     interface Env {
       INITIAL_SETUP_KEY?: string;
       SESSION_SECRET?: string;
+      GITHUB_CLIENT_ID?: string;
+      GITHUB_CLIENT_SECRET?: string;
       CF_PAGES?: string;
     }
   }

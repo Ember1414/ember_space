@@ -5,7 +5,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostPage from '../../../templates/PostPage.astro';
 import DbPostPage from '../../../components/DbPostPage.astro';
 import PublicContentUnavailable from '../../../components/PublicContentUnavailable.astro';
-import { allowsStaticPostFallback, getPublishedPostBySlug, getPublishedPostSummaries, getPublishedTranslationSlug, runtimeEnv, type PostRecord, type PostSummary } from '../../../lib/db';
+import { allowsStaticPostFallback, getAuthorCardById, getPublishedPostBySlug, getPublishedPostSummaries, getPublishedTranslationSlug, runtimeEnv, type AuthorCard, type PostRecord, type PostSummary } from '../../../lib/db';
 
 export const prerender = false;
 const slugParam = Astro.params.slug ?? '';
@@ -13,6 +13,7 @@ const slug = Array.isArray(slugParam) ? slugParam.join('/') : slugParam;
 const env = runtimeEnv(Astro.locals);
 let dbPost: PostRecord | null = null;
 let dbPosts: PostSummary[] | null = null;
+let author: AuthorCard | null = null;
 let alternatePath: string | null = null;
 const hasDb = Boolean(env?.DB);
 let dbUnavailable = !hasDb && !allowsStaticPostFallback(env);
@@ -21,6 +22,7 @@ if (hasDb) {
     dbPost = await getPublishedPostBySlug(env, slug, 'en');
     if (dbPost) {
       dbPosts = await getPublishedPostSummaries(env, 'en');
+      author = await getAuthorCardById(env, dbPost.authorId);
       if (dbPost.translationKey) {
         const alternateSlug = await getPublishedTranslationSlug(env, dbPost.translationKey, 'zh');
         if (alternateSlug) alternatePath = `/posts/${alternateSlug}/`;
@@ -76,7 +78,7 @@ if (dbUnavailable) {
     publishedDate={new Date(dbPost.pubDate)}
     updatedDate={dbPost.updatedDate ? new Date(dbPost.updatedDate) : undefined}
   >
-    <DbPostPage lang="en" post={dbPost} posts={dbPosts ?? []} />
+    <DbPostPage lang="en" post={dbPost} posts={dbPosts ?? []} author={author} />
   </BaseLayout>
 ) : (
   <BaseLayout

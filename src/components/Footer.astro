@@ -5,25 +5,28 @@ import { t, tf, type Lang } from '../i18n/ui';
 
 interface Props {
   lang?: Lang;
+  cta?: boolean;
 }
 
-const { lang = 'zh' } = Astro.props;
+const { lang = 'zh', cta = false } = Astro.props;
 const base = lang === 'en' ? '/en' : '';
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
-  <div class="footer-cta shell">
-    <div>
-      <p class="eyebrow">RSS / XML</p>
-      <h2>{t(lang, 'footer.rssTitle')}</h2>
-      <p>{t(lang, 'footer.rssText')}</p>
+  {cta && (
+    <div class="footer-cta shell">
+      <div>
+        <p class="eyebrow">RSS / XML</p>
+        <h2>{t(lang, 'footer.rssTitle')}</h2>
+        <p>{t(lang, 'footer.rssText')}</p>
+      </div>
+      <a class="button button--primary" href={`${base}/rss/`} aria-label={t(lang, 'a11y.rss')}>
+        <Rss size={18} aria-hidden="true" />
+        {t(lang, 'footer.rssButton')}
+      </a>
     </div>
-    <a class="button button--primary" href={`${base}/rss/`} aria-label={t(lang, 'a11y.rss')}>
-      <Rss size={18} aria-hidden="true" />
-      {t(lang, 'footer.rssButton')}
-    </a>
-  </div>
+  )}
 
   <div class="footer-bottom">
     <div class="footer-bottom-inner shell">
@@ -39,6 +42,7 @@ const year = new Date().getFullYear();
           <Rss size={18} aria-hidden="true" />
         </a>
         <a href={`${base}/about/`}>{t(lang, 'nav.about')}</a>
+        <a href={`${base}/account/`}>{t(lang, 'nav.account')}</a>
       </nav>
     </div>
   </div>

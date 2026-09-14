@@ -21,6 +21,7 @@ export const GET: APIRoute = async (context) => {
   try {
     const auth = await authorizeRead(context);
     if (auth instanceof Response) return auth;
+    if (auth.session.user.role === 'reader') return errorResponse(403, '没有访问后台内容的权限。');
     const owner = auth.session.user.role === 'owner';
     const result = auth.db.prepare(
       `SELECT ${MANAGED_POST_SUMMARY_COLUMNS} FROM posts p LEFT JOIN users u ON u.id = p.author_id

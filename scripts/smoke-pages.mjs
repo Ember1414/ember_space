@@ -459,7 +459,7 @@ async function runSmoke(baseUrl, fixture) {
     assert.ok(!sitemap.text.includes(fixture.editorPostSlug), 'Draft leaked into the sitemap.');
   });
 
-  await check('editor permission boundaries protect other posts, archive, and deletion', async () => {
+  await check('editor permission boundaries protect other posts, archive, and foreign deletion', async () => {
     const editOwnerPost = await request(baseUrl, `/api/posts/${state.ownerPostId}`, {
       method: 'PATCH',
       cookie: editor.cookie,
@@ -476,12 +476,37 @@ async function runSmoke(baseUrl, fixture) {
     });
     expectStatus(archiveOwnPost, 403, 'editor archive');
 
-    const deleteOwnPost = await request(baseUrl, `/api/posts/${state.editorPostId}`, {
+    const deleteOwnerPost = await request(baseUrl, `/api/posts/${state.ownerPostId}`, {
       method: 'DELETE',
       cookie: editor.cookie,
       csrf: editor.csrf,
     });
-    expectStatus(deleteOwnPost, 403, 'editor delete');
+    expectStatus(deleteOwnerPost, 403, 'editor deleting owner post');
+  });
+
+  await check('editor can delete their own post', async () => {
+    const tempSlug = `editor-temp-${fixture.runId}`;
+    const tempPost = await request(baseUrl, '/api/posts', {
+      method: 'POST',
+      cookie: editor.cookie,
+      csrf: editor.csrf,
+      json: postInput({
+        slug: tempSlug,
+        title: `Editor temp ${fixture.runId}`,
+        body: '# Temporary editor post',
+      }),
+    });
+    expectStatus(tempPost, 201, 'editor temp draft creation');
+
+    const deleted = await request(baseUrl, `/api/posts/${tempPost.data.id}`, {
+      method: 'DELETE',
+      cookie: editor.cookie,
+      csrf: editor.csrf,
+    });
+    expectStatus(deleted, 200, 'editor deleting own post');
+
+    const gone = await request(baseUrl, `/api/posts/${tempPost.data.id}`, { cookie: editor.cookie });
+    expectStatus(gone, 404, 'deleted own post lookup');
   });
 
   await check('post updates require a version and reject stale concurrent writes', async () => {
@@ -692,7 +717,7 @@ BEGIN TRANSACTION;
 DELETE FROM sessions WHERE user_id IN (
   SELECT id FROM users WHERE email IN (${sqlString(fixture.ownerEmail)}, ${sqlString(fixture.editorEmail)})
 );
-DELETE FROM posts WHERE slug IN (${sqlString(fixture.editorPostSlug)}, ${sqlString(fixture.ownerPostSlug)});
+DELETE FROM posts WHERE slug IN (${sqlString(fixture.editorPostSlug)}, ${sqlString(fixture.ownerPostSlug)}, ${sqlString(`editor-temp-${fixture.runId}`)});
 DELETE FROM invites
 WHERE invited_email IN (${sqlString(fixture.editorEmail)}, ${sqlString(fixture.unauthorizedInviteEmail)})
    OR created_by IN (

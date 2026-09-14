@@ -4,6 +4,7 @@ import { canCreatePost, canDeletePost, canEditPost, canManageMembers, canPublish
 describe('authorization policy', () => {
   const owner = { id: 'owner', role: 'owner' as const, active: true };
   const editor = { id: 'editor', role: 'editor' as const, active: true };
+  const reader = { id: 'reader', role: 'reader' as const, active: true };
   const suspended = { id: 'suspended', role: 'editor' as const, active: false };
   const ownPost = { authorId: 'editor', status: 'draft' as const };
   const archivedOwnPost = { authorId: 'editor', status: 'archived' as const };
@@ -27,7 +28,20 @@ describe('authorization policy', () => {
     expect(canSetPostStatus(editor, archivedOwnPost, 'published')).toBe(false);
     expect(canEditPost(editor, otherPost)).toBe(false);
     expect(canPublishPost(editor, otherPost)).toBe(false);
-    expect(canDeletePost(editor, ownPost)).toBe(false);
+  });
+
+  it('lets editors delete only their own posts, in any status', () => {
+    expect(canDeletePost(editor, ownPost)).toBe(true);
+    expect(canDeletePost(editor, archivedOwnPost)).toBe(true);
+    expect(canDeletePost(editor, otherPost)).toBe(false);
+    expect(canDeletePost(owner, otherPost)).toBe(true);
+  });
+
+  it('denies all authoring actions to readers', () => {
+    expect(canCreatePost(reader)).toBe(false);
+    expect(canManageMembers(reader)).toBe(false);
+    expect(canEditPost(reader, ownPost)).toBe(false);
+    expect(canDeletePost(reader, ownPost)).toBe(false);
   });
 
   it('allows the owner to manage every post', () => {

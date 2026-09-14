@@ -110,7 +110,7 @@ export const DELETE: APIRoute = async (context) => {
     const id = context.params.id ?? '';
     const existing = await findPost(auth.db, id);
     if (!existing) return errorResponse(404, '文章不存在。');
-    if (!canDeletePost(auth.session.user, existing)) return errorResponse(403, '只有所有者可以删除文章。');
+    if (!canDeletePost(auth.session.user, existing)) return errorResponse(403, '没有删除此文章的权限。');
     await auth.db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
     return json({ ok: true });
   } catch {

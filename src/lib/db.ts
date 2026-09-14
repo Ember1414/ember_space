@@ -19,15 +19,40 @@ export interface D1DatabaseLike {
   batch(statements: D1PreparedStatementLike[]): Promise<D1ResultLike[]>;
 }
 
-export type Role = 'owner' | 'editor';
+export interface R2ObjectBodyLike {
+  body: ReadableStream;
+  httpMetadata?: { contentType?: string };
+  etag?: string;
+}
+
+export interface R2BucketLike {
+  put(
+    key: string,
+    value: Uint8Array | ArrayBuffer | ReadableStream,
+    options?: { httpMetadata?: { contentType?: string } },
+  ): Promise<unknown>;
+  get(key: string): Promise<R2ObjectBodyLike | null>;
+}
+
+/** KV 是 R2 未开通（免绑卡）时的图片存储回退方案。 */
+export interface KVNamespaceLike {
+  get(key: string, type: 'arrayBuffer'): Promise<ArrayBuffer | null>;
+  put(key: string, value: ArrayBuffer | Uint8Array): Promise<void>;
+}
+
+export type Role = 'owner' | 'editor' | 'reader';
 export type PostStatus = 'draft' | 'published' | 'archived';
 
 export interface RuntimeEnv {
   DB?: D1DatabaseLike;
+  IMAGES?: R2BucketLike;
+  IMAGES_KV?: KVNamespaceLike;
   ENVIRONMENT?: string;
   CF_PAGES?: string;
   INITIAL_SETUP_KEY?: string;
   SESSION_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
 }
 
 export interface PostSummary {
@@ -115,13 +140,19 @@ const POST_COLUMNS = `id, slug, title, description, body, length(body) AS bodyLe
 
 /** Astro's Cloudflare v14 adapter exposes bindings through cloudflare:workers. */
 export function runtimeEnv(_locals?: unknown): RuntimeEnv {
-  const configuredEnv: Cloudflare.Env = cloudflareEnv;
+  // IMAGES（R2）与 IMAGES_KV（KV）按需绑定：wrangler.toml 未启用时 Cloudflare.Env 上不存在，
+  // 运行时读取 undefined 走降级路径，因此这里做一次宽容转换。
+  const configuredEnv = cloudflareEnv as unknown as RuntimeEnv;
   return {
     DB: configuredEnv.DB,
+    IMAGES: configuredEnv.IMAGES,
+    IMAGES_KV: configuredEnv.IMAGES_KV,
     ENVIRONMENT: configuredEnv.ENVIRONMENT,
     CF_PAGES: configuredEnv.CF_PAGES,
     INITIAL_SETUP_KEY: configuredEnv.INITIAL_SETUP_KEY,
     SESSION_SECRET: configuredEnv.SESSION_SECRET,
+    GITHUB_CLIENT_ID: configuredEnv.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: configuredEnv.GITHUB_CLIENT_SECRET,
   };
 }
 
@@ -231,4 +262,22 @@ export async function countPosts(env: RuntimeEnv | null | undefined): Promise<{ 
       SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts FROM posts`,
   ).first<{ total: number; published: number; drafts: number }>();
   return row ? { total: Number(row.total), published: Number(row.published), drafts: Number(row.drafts) } : null;
+}
+
+export interface AuthorCard {
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string;
+}
+
+/** 文章页作者卡：只暴露公开字段（不返回 email、github_id）。0006 列缺失时由调用方降级。 */
+export async function getAuthorCardById(
+  env: RuntimeEnv | null | undefined,
+  userId: string | null,
+): Promise<AuthorCard | null> {
+  if (!env?.DB || !userId) return null;
+  const row = await env.DB.prepare(
+    'SELECT display_name AS displayName, avatar_url AS avatarUrl, bio FROM users WHERE id = ? AND active = 1 LIMIT 1',
+  ).bind(userId).first<{ displayName: string; avatarUrl: string | null; bio: string | null }>();
+  return row ? { displayName: row.displayName, avatarUrl: row.avatarUrl ?? null, bio: row.bio ?? '' } : null;
 }
