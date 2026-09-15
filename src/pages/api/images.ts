@@ -1,10 +1,20 @@
 import type { APIContext } from 'astro';
-import { authorizeWrite, errorResponse, json } from '../../lib/auth/http';
+import { authorizeRead, authorizeWrite, errorResponse, json } from '../../lib/auth/http';
 import { canUploadImages } from '../../lib/auth/policy';
 import { MAX_IMAGE_BYTES, newImageKey, sniffImageFormat } from '../../lib/images';
-import { imageStorageAvailable, putImage } from '../../lib/imageStore';
+import { imageStorageAvailable, listImages, putImage } from '../../lib/imageStore';
 
 export const prerender = false;
+
+/** 编辑器图片库：列出存储中的图片（仅内容作者）。 */
+export async function GET(context: APIContext): Promise<Response> {
+  const auth = await authorizeRead(context);
+  if (auth instanceof Response) return auth;
+  if (!canUploadImages(auth.session.user)) return errorResponse(403, '没有管理图片的权限。');
+  if (!imageStorageAvailable(auth.env)) return errorResponse(503, '图片存储暂时不可用。');
+  const images = await listImages(auth.env, 200);
+  return json({ images });
+}
 
 export async function POST(context: APIContext): Promise<Response> {
   const auth = await authorizeWrite(context);

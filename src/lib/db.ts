@@ -32,12 +32,19 @@ export interface R2BucketLike {
     options?: { httpMetadata?: { contentType?: string } },
   ): Promise<unknown>;
   get(key: string): Promise<R2ObjectBodyLike | null>;
+  delete(key: string): Promise<void>;
+  list(options?: { limit?: number }): Promise<{
+    objects: Array<{ key: string; uploaded?: string | Date; size?: number }>;
+    truncated?: boolean;
+  }>;
 }
 
 /** KV 是 R2 未开通（免绑卡）时的图片存储回退方案。 */
 export interface KVNamespaceLike {
   get(key: string, type: 'arrayBuffer'): Promise<ArrayBuffer | null>;
   put(key: string, value: ArrayBuffer | Uint8Array): Promise<void>;
+  delete(key: string): Promise<void>;
+  list(options?: { limit?: number }): Promise<{ keys: Array<{ name: string }>; list_complete: boolean }>;
 }
 
 export type Role = 'owner' | 'editor' | 'reader';

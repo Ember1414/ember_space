@@ -106,18 +106,23 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
       <div class="md-toolbar" role="toolbar" aria-label="Markdown 工具栏">
         <button type="button" class="md-tool" data-md="h2" title="二级标题">H2</button>
         <button type="button" class="md-tool" data-md="h3" title="三级标题">H3</button>
+        <button type="button" class="md-tool" data-md="h4" title="四级标题">H4</button>
         <span class="md-sep" aria-hidden="true"></span>
         <button type="button" class="md-tool" data-md="bold" title="粗体（Ctrl+B）"><strong>B</strong></button>
         <button type="button" class="md-tool" data-md="italic" title="斜体（Ctrl+I）"><em>I</em></button>
+        <button type="button" class="md-tool" data-md="strike" title="删除线"><s>S</s></button>
         <button type="button" class="md-tool" data-md="code" title="行内代码">`</button>
         <span class="md-sep" aria-hidden="true"></span>
         <button type="button" class="md-tool" data-md="quote" title="引用">引用</button>
         <button type="button" class="md-tool" data-md="list" title="无序列表">列表</button>
+        <button type="button" class="md-tool" data-md="olist" title="有序列表">1. 列表</button>
+        <button type="button" class="md-tool" data-md="table" title="插入表格">表格</button>
         <button type="button" class="md-tool" data-md="codeblock" title="代码块">代码块</button>
         <button type="button" class="md-tool" data-md="hr" title="分割线">—</button>
         <span class="md-sep" aria-hidden="true"></span>
         <button type="button" class="md-tool" data-md="link" title="链接（Ctrl+K）">链接</button>
         <button type="button" class="md-tool" data-md-image title="插入图片（也可粘贴或拖拽）">图片</button>
+        <button type="button" class="md-tool" data-md-gallery title="图片库：管理已上传的图片">图片库</button>
         <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/avif" multiple hidden data-md-file />
       </div>
       <label class="sr-only" for="post-content">Markdown 正文</label>
@@ -129,7 +134,17 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
   </div>
 
   {(post || postId) && <button class="danger-link" type="button" data-delete hidden>删除这篇文章</button>}
-  <p class="autosave-hint" data-autosave-hint>草稿会在停止编辑后自动保存。</p>
+  <p class="autosave-hint" data-autosave-hint>草稿会在停止编辑后自动保存。快捷键：Ctrl+B 粗体 · Ctrl+I 斜体 · Ctrl+K 链接。</p>
+
+  <dialog class="gallery-dialog" data-gallery>
+    <div class="gallery-head">
+      <strong>图片库</strong>
+      <button type="button" class="button button--secondary" data-gallery-close>关闭</button>
+    </div>
+    <p class="gallery-hint">这里列出所有上传过的图片。删除会从存储中永久移除，引用它的文章将无法显示，操作不可恢复。</p>
+    <div class="gallery-grid" data-gallery-grid></div>
+    <p class="gallery-empty" data-gallery-empty hidden>还没有上传过图片。</p>
+  </dialog>
 </form>
 
 <script is:inline type="application/json" data-editor-initial set:html={serialized}></script>
@@ -433,7 +448,7 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     else contentInput.setSelectionRange(start + before.length, start + before.length + placeholder.length);
   }
 
-  function applyLinePrefix(prefix: string) {
+  function applyLinePrefix(prefix: string | ((index: number) => string)) {
     if (!contentInput) return;
     const start = contentInput.selectionStart;
     const end = contentInput.selectionEnd;
@@ -442,11 +457,13 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     const nextBreak = value.indexOf('\n', end);
     const blockEnd = nextBreak === -1 ? value.length : nextBreak;
     const block = value.slice(lineStart, blockEnd);
-    const prefixed = block.split('\n').map((line) => (line.trim() ? prefix + line : line)).join('\n');
+    const prefixed = block.split('\n')
+      .map((line, index) => (line.trim() ? (typeof prefix === 'function' ? prefix(index) : prefix) + line : line))
+      .join('\n');
     contentInput.value = value.slice(0, lineStart) + prefixed + value.slice(blockEnd);
     notifyContentChanged();
     contentInput.focus();
-    contentInput.setSelectionRange(lineStart + prefix.length, lineStart + prefixed.length);
+    contentInput.setSelectionRange(lineStart, lineStart + prefixed.length);
   }
 
   function applyLink() {
@@ -480,14 +497,18 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
       const action = button.dataset.md;
       if (action === 'h2') applyLinePrefix('## ');
       else if (action === 'h3') applyLinePrefix('### ');
+      else if (action === 'h4') applyLinePrefix('#### ');
       else if (action === 'quote') applyLinePrefix('> ');
       else if (action === 'list') applyLinePrefix('- ');
+      else if (action === 'olist') applyLinePrefix((index) => `${index + 1}. `);
       else if (action === 'bold') applySurround('**', '**', '粗体文字');
       else if (action === 'italic') applySurround('*', '*', '斜体文字');
+      else if (action === 'strike') applySurround('~~', '~~', '删除文字');
       else if (action === 'code') applySurround('`', '`', '代码');
       else if (action === 'codeblock') applySurround('\n```\n', '\n```\n', '代码块');
       else if (action === 'link') applyLink();
       else if (action === 'hr') insertBlock('---');
+      else if (action === 'table') insertBlock('| 表头一 | 表头二 | 表头三 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |');
     });
   });
 
@@ -561,6 +582,88 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
     event.preventDefault();
     uploadFiles(files);
   });
+
+  // 图片库：查看 / 复制链接 / 从存储中永久删除已上传的图片。
+  const gallery = form.querySelector<HTMLDialogElement>('[data-gallery]');
+  const galleryGrid = form.querySelector<HTMLElement>('[data-gallery-grid]');
+  const galleryEmpty = form.querySelector<HTMLElement>('[data-gallery-empty]');
+
+  function galleryCard(entry: { key: string }) {
+    const card = document.createElement('div');
+    card.className = 'gallery-card';
+    const image = document.createElement('img');
+    image.src = `/images/${entry.key}`;
+    image.alt = '';
+    image.loading = 'lazy';
+    const name = document.createElement('code');
+    name.className = 'gallery-key';
+    name.textContent = entry.key.length > 34 ? `${entry.key.slice(0, 16)}…${entry.key.slice(-14)}` : entry.key;
+    name.title = entry.key;
+    const row = document.createElement('div');
+    row.className = 'gallery-actions';
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'button button--secondary';
+    copy.textContent = '复制链接';
+    copy.addEventListener('click', () => {
+      void navigator.clipboard?.writeText(`${window.location.origin}/images/${entry.key}`);
+      copy.textContent = '已复制';
+      window.setTimeout(() => { copy.textContent = '复制链接'; }, 1200);
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'button button--secondary gallery-delete';
+    remove.textContent = '删除';
+    remove.addEventListener('click', async () => {
+      if (!window.confirm('确定从存储中永久删除这张图片吗？引用它的文章将无法显示，操作不可恢复。')) return;
+      remove.disabled = true;
+      try {
+        const token = await getCsrf();
+        const response = await fetch(`/api/images/${encodeURIComponent(entry.key)}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: token ? { 'x-csrf-token': token } : {},
+        });
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+        if (!response.ok) throw new Error(data.error || `删除失败（${response.status}）`);
+        card.remove();
+        if (galleryGrid && !galleryGrid.querySelector('.gallery-card')) galleryEmpty?.removeAttribute('hidden');
+        setMessage('图片已删除。', 'success');
+      } catch (error) {
+        remove.disabled = false;
+        setMessage(error instanceof Error ? error.message : '删除失败，请稍后重试。', 'error');
+      }
+    });
+    row.appendChild(copy);
+    row.appendChild(remove);
+    card.appendChild(image);
+    card.appendChild(name);
+    card.appendChild(row);
+    return card;
+  }
+
+  form.querySelector<HTMLButtonElement>('[data-md-gallery]')?.addEventListener('click', async () => {
+    if (!gallery) return;
+    gallery.showModal();
+    if (galleryGrid) galleryGrid.replaceChildren();
+    galleryEmpty?.setAttribute('hidden', '');
+    setMessage('正在加载图片库…');
+    try {
+      const response = await fetch('/api/images', { credentials: 'include' });
+      const data = await response.json().catch(() => ({})) as { images?: Array<{ key: string }>; error?: string };
+      if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+      if (!response.ok) throw new Error(data.error || `读取图片库失败（${response.status}）`);
+      const images = data.images ?? [];
+      if (galleryGrid) for (const entry of images) galleryGrid.appendChild(galleryCard(entry));
+      if (!images.length) galleryEmpty?.removeAttribute('hidden');
+      setMessage('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '读取图片库失败。', 'error');
+    }
+  });
+  gallery?.querySelector('[data-gallery-close]')?.addEventListener('click', () => gallery.close());
+  gallery?.addEventListener('click', (event) => { if (event.target === gallery) gallery.close(); });
 </script>
 
 <style>
@@ -603,6 +706,22 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
   .danger-link[hidden], .field option[hidden], .editor-pane[hidden] { display: none; }
   .autosave-hint { margin: 10px 0 0; color: var(--text-muted); font-size: 0.78rem; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .gallery-dialog {
+    width: min(760px, calc(100% - 24px)); max-height: min(80dvh, 640px); padding: 20px;
+    border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text);
+  }
+  .gallery-dialog::backdrop { background: rgb(0 0 0 / 55%); backdrop-filter: blur(3px); }
+  .gallery-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .gallery-head strong { font-size: 1.1rem; }
+  .gallery-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 0.8rem; }
+  .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; overflow-y: auto; }
+  .gallery-card { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-soft); }
+  .gallery-card img { width: 100%; height: 100px; border-radius: 4px; object-fit: cover; background: var(--surface); }
+  .gallery-key { overflow: hidden; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+  .gallery-actions { display: flex; gap: 6px; }
+  .gallery-actions .button { flex: 1; min-height: 34px; padding-inline: 8px; font-size: 0.76rem; }
+  .gallery-delete { color: var(--accent-strong); }
+  .gallery-empty { margin: 18px 0 0; color: var(--text-muted); font-size: 0.88rem; }
   @media (max-width: 760px) {
     .editor-toolbar { align-items: start; flex-direction: column; }
     .editor-actions { width: 100%; justify-content: start; }

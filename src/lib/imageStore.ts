@@ -63,3 +63,41 @@ export async function getImage(env: RuntimeEnv, key: string): Promise<ImageObjec
   }
   return null;
 }
+
+export interface ImageEntry {
+  key: string;
+  uploaded?: string;
+  size?: number;
+}
+
+/** 列出存储中的图片（编辑器图片库用），优先返回最新的。 */
+export async function listImages(env: RuntimeEnv, limit = 200): Promise<ImageEntry[]> {
+  if (env.IMAGES) {
+    const result = await env.IMAGES.list({ limit });
+    return result.objects
+      .map((object) => ({
+        key: object.key,
+        uploaded: object.uploaded instanceof Date ? object.uploaded.toISOString() : object.uploaded,
+        size: object.size,
+      }))
+      .sort((a, b) => (b.uploaded ?? '').localeCompare(a.uploaded ?? ''));
+  }
+  if (env.IMAGES_KV) {
+    const result = await env.IMAGES_KV.list({ limit });
+    // KV list 按字典序返回，倒序即近似"最新在前"（key 含时间前缀/uuid）
+    return result.keys.map((key) => ({ key: key.name })).reverse();
+  }
+  return [];
+}
+
+export async function deleteImage(env: RuntimeEnv, key: string): Promise<void> {
+  if (env.IMAGES) {
+    await env.IMAGES.delete(key);
+    return;
+  }
+  if (env.IMAGES_KV) {
+    await env.IMAGES_KV.delete(key);
+    return;
+  }
+  throw new Error('image storage unavailable');
+}
