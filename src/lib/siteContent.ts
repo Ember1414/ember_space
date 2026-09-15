@@ -32,11 +32,12 @@ export async function getAboutContent(
   lang: SiteLang,
 ): Promise<AboutContent | null> {
   if (!db) return null;
-  const row = await db.prepare('SELECT value FROM site_content WHERE key = ? LIMIT 1')
-    .bind(aboutKey(lang))
-    .first<{ value: string }>();
-  if (!row) return null;
+  // 表尚未迁移（0010）或 D1 暂不可用时回退默认内容，公开页不能因此白屏
   try {
+    const row = await db.prepare('SELECT value FROM site_content WHERE key = ? LIMIT 1')
+      .bind(aboutKey(lang))
+      .first<{ value: string }>();
+    if (!row) return null;
     return normalizeAboutContent(JSON.parse(row.value) as Record<string, unknown>);
   } catch {
     return null;

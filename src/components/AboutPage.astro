@@ -15,12 +15,18 @@ const isZh = lang === 'zh';
 const base = isZh ? '' : '/en';
 
 // 所有者在后台编辑的内容（D1）优先；未编辑时回退到源码内容集合与默认文案
+// 任何数据源异常都不能让公开页白屏
 const env = runtimeEnv(Astro.locals);
 const stored = await getAboutContent(env?.DB ?? null, lang);
 const storedIntroHtml = stored?.intro ? renderMarkdownDocument(stored.intro).html : null;
 
-const aboutEntry = (await getCollection('about', ({ data }) => data.lang === lang))[0];
-const Content = aboutEntry ? (await render(aboutEntry)).Content : null;
+let Content: Awaited<ReturnType<typeof render>>['Content'] | null = null;
+try {
+  const aboutEntry = (await getCollection('about', ({ data }) => data.lang === lang))[0];
+  Content = aboutEntry ? (await render(aboutEntry)).Content : null;
+} catch {
+  Content = null;
+}
 
 const facts = {
   status: stored?.status || t(lang, 'about.statusValue'),
