@@ -14,29 +14,34 @@
 :where(.home-page) .home-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
-  padding-block: 24px;
+  gap: 18px;
+  padding-block: 13px;
 }
 
 :where(.home-page) .stat {
   display: grid;
-  gap: 2px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
 }
 
 :where(.home-page) .stat-num {
   color: var(--accent);
   font-family: var(--font-mono);
-  font-size: 1.7rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 :where(.home-page) .stat-label {
+  overflow: hidden;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 :where(.home-page) .home-recent {
@@ -186,12 +191,12 @@
 @media (max-width: 760px) {
   :where(.home-page) .home-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    padding-block: 18px;
+    gap: 10px 16px;
+    padding-block: 10px;
   }
 
   :where(.home-page) .stat-num {
-    font-size: 1.35rem;
+    font-size: 1rem;
   }
 
   :where(.home-page) .home-recent {

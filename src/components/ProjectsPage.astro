@@ -4,6 +4,7 @@ import { ExternalLink, Github } from 'lucide-astro';
 import { SITE } from '../consts';
 import { t, type Lang } from '../i18n/ui';
 import { getGitHubRepos, repositoryUrlKey, type Repo } from '../lib/github';
+import { getContributions } from '../lib/contributions';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProjectCard from './ProjectCard.astro';
 import RepoCard from './RepoCard.astro';
@@ -36,19 +37,25 @@ const labels = isZh
       eyebrow: 'PROJECTS / 构建记录',
       emptyTitle: '项目列表暂时不可用',
       emptyText: '你仍可前往 GitHub 查看全部公开仓库。',
-      contributions: 'GitHub 贡献记录',
+      contributions: 'GITHUB / 贡献记录',
       contributionsAlt: 'GitHub 贡献热力图',
-      viewProfile: '在 GitHub 查看主页',
+      totalPrefix: '过去一年',
+      totalSuffix: '次贡献',
+      less: '少',
+      more: '多',
     }
   : {
       eyebrow: 'PROJECTS / BUILD NOTES',
       emptyTitle: 'Project data is unavailable',
       emptyText: 'You can still browse every public repository on GitHub.',
-      contributions: 'GitHub contributions',
+      contributions: 'GITHUB / CONTRIBUTIONS',
       contributionsAlt: 'GitHub contribution heatmap',
-      viewProfile: 'View profile on GitHub',
+      totalPrefix: '',
+      totalSuffix: 'contributions in the last year',
+      less: 'Less',
+      more: 'More',
     };
-const githubUser = SITE.social.github.split('/').pop() ?? '';
+const contributions = await getContributions();
 ---
 
 <BaseLayout
@@ -66,25 +73,36 @@ const githubUser = SITE.social.github.split('/').pop() ?? '';
         <p class="page-sub">{t(lang, 'projects.subtitle')}</p>
       </header>
 
-      {githubUser && (
+      {contributions && (
         <section class="contributions anim" aria-label={labels.contributions}>
-          <header class="section-head">
+          <header class="section-head contrib-head">
             <p class="eyebrow"><Github size={15} aria-hidden="true" /> {labels.contributions}</p>
+            <a class="contrib-total" href={SITE.social.github} target="_blank" rel="noopener">
+              {labels.totalPrefix && <span>{labels.totalPrefix}</span>}
+              <strong>{contributions.total}</strong>
+              <span>{labels.totalSuffix}</span>
+              <ExternalLink size={14} aria-hidden="true" />
+            </a>
           </header>
-          <a
-            class="contributions-frame"
-            href={SITE.social.github}
-            target="_blank"
-            rel="noopener"
-            title={labels.viewProfile}
-          >
-            <img
-              src={`https://ghchart.rshah.org/${githubUser}`}
-              alt={labels.contributionsAlt}
-              width="828"
-              height="128"
-              loading="lazy"
-            />
+          <a class="contributions-frame" href={SITE.social.github} target="_blank" rel="noopener" aria-label={labels.contributionsAlt}>
+            <div class="contrib-graph" role="img" aria-label={labels.contributionsAlt}>
+              {contributions.weeks.map((week, weekIndex) => (
+                <span class="contrib-week">
+                  {week.map((day, dayIndex) => day
+                    ? <span class={`contrib-cell level-${day.level}`} title={`${day.date} · ${day.count}`} />
+                    : <span class="contrib-cell empty" data-slot={`${weekIndex}-${dayIndex}`} />)}
+                </span>
+              ))}
+            </div>
+            <div class="contrib-foot">
+              <span class="contrib-scale-label">{labels.less}</span>
+              <span class="contrib-cell level-0" />
+              <span class="contrib-cell level-1" />
+              <span class="contrib-cell level-2" />
+              <span class="contrib-cell level-3" />
+              <span class="contrib-cell level-4" />
+              <span class="contrib-scale-label">{labels.more}</span>
+            </div>
           </a>
         </section>
       )}
@@ -136,6 +154,10 @@ const githubUser = SITE.social.github.split('/').pop() ?? '';
   .github-link { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; font-weight: 700; }
   .contributions { margin-top: 36px; }
   .contributions + .projects-section { margin-top: 56px; }
+  .contrib-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+  .contrib-total { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.78rem; text-decoration: none; }
+  .contrib-total strong { color: var(--accent); font-size: 0.95rem; }
+  .contrib-total:hover { color: var(--accent-strong); }
   .contributions-frame {
     display: block;
     padding: 18px 20px;
@@ -144,11 +166,26 @@ const githubUser = SITE.social.github.split('/').pop() ?? '';
     background: var(--surface);
     box-shadow: var(--shadow-sm);
   }
-  .contributions-frame img {
-    display: block;
-    width: 100%;
-    max-width: 828px;
-    height: auto;
-    margin-inline: auto;
+  .contributions-frame:hover { border-color: var(--border-strong); }
+  .contrib-graph {
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
+  .contrib-week { display: grid; grid-template-rows: repeat(7, 11px); gap: 3px; }
+  .contrib-cell {
+    width: 11px;
+    height: 11px;
+    border-radius: 2.5px;
+    background: var(--surface-soft);
+  }
+  .contrib-cell.empty { background: transparent; }
+  .contrib-cell.level-1 { background: color-mix(in srgb, var(--accent) 28%, var(--surface-soft)); }
+  .contrib-cell.level-2 { background: color-mix(in srgb, var(--accent) 52%, var(--surface-soft)); }
+  .contrib-cell.level-3 { background: color-mix(in srgb, var(--accent) 78%, var(--surface-soft)); }
+  .contrib-cell.level-4 { background: var(--accent); }
+  .contrib-foot { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+  .contrib-scale-label { margin-right: 4px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; }
+  .contrib-foot .contrib-cell { width: 10px; height: 10px; }
 </style>

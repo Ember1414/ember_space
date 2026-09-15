@@ -37,7 +37,7 @@
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   padding-block: 12px;
-  padding-inline: 40px;
+  padding-inline: 52px;
 }
 
 :where(.post-index) .featured-list .post-item:first-child {
@@ -93,7 +93,7 @@
   }
 
   :where(.post-index) .featured-list {
-    padding-inline: 24px;
+    padding-inline: 32px;
   }
 
   :where(.post-index) .index-section + .index-section {
