@@ -2,6 +2,9 @@
 import { getCollection, render } from 'astro:content';
 import { Code2, Github, Mail, MapPin, MessageSquare, Rss } from 'lucide-astro';
 import { SITE } from '../consts';
+import { runtimeEnv } from '../lib/db';
+import { getAboutContent } from '../lib/siteContent';
+import { renderMarkdownDocument } from '../lib/posts/render';
 import { t, type Lang } from '../i18n/ui';
 import BaseLayout from '../layouts/BaseLayout.astro';
 
@@ -10,8 +13,22 @@ interface Props { lang: Lang; }
 const { lang } = Astro.props;
 const isZh = lang === 'zh';
 const base = isZh ? '' : '/en';
+
+// 所有者在后台编辑的内容（D1）优先；未编辑时回退到源码内容集合与默认文案
+const env = runtimeEnv(Astro.locals);
+const stored = await getAboutContent(env?.DB ?? null, lang);
+const storedIntroHtml = stored?.intro ? renderMarkdownDocument(stored.intro).html : null;
+
 const aboutEntry = (await getCollection('about', ({ data }) => data.lang === lang))[0];
 const Content = aboutEntry ? (await render(aboutEntry)).Content : null;
+
+const facts = {
+  status: stored?.status || t(lang, 'about.statusValue'),
+  stack: stored?.stack || t(lang, 'about.stackValue'),
+  location: stored?.location || t(lang, 'about.locationValue'),
+};
+const email = stored?.email || SITE.social.email.replace('mailto:', '');
+const github = stored?.github || SITE.social.github;
 
 const labels = isZh
   ? { profile: '个人简介', focus: '关注方向', contact: '保持联系', emptyTitle: '简介正在整理中', emptyText: '当前语言的简介尚未发布。', rss: '通过 RSS 订阅' }
@@ -36,7 +53,11 @@ const labels = isZh
         <div class="about-main anim">
           <section aria-labelledby={`about-profile-${lang}`}>
             <h2 class="section-title" id={`about-profile-${lang}`}>{labels.profile}</h2>
-            {Content ? <div class="prose about-prose"><Content /></div> : <div class="empty-state"><h3>{labels.emptyTitle}</h3><p>{labels.emptyText}</p></div>}
+            {storedIntroHtml
+              ? <div class="prose about-prose" set:html={storedIntroHtml} />
+              : Content
+                ? <div class="prose about-prose"><Content /></div>
+                : <div class="empty-state"><h3>{labels.emptyTitle}</h3><p>{labels.emptyText}</p></div>}
           </section>
 
           <section class="site-notes" aria-labelledby={`about-site-${lang}`}>
@@ -53,15 +74,15 @@ const labels = isZh
         <aside class="about-aside anim" aria-labelledby={`about-focus-${lang}`}>
           <h2 class="aside-title" id={`about-focus-${lang}`}>{labels.focus}</h2>
           <dl class="about-facts">
-            <div><dt>{t(lang, 'about.status')}</dt><dd>{t(lang, 'about.statusValue')}</dd></div>
-            <div><dt>{t(lang, 'about.stack')}</dt><dd>{t(lang, 'about.stackValue')}</dd></div>
-            <div><dt>{t(lang, 'about.location')}</dt><dd>{t(lang, 'about.locationValue')}</dd></div>
+            <div><dt>{t(lang, 'about.status')}</dt><dd>{facts.status}</dd></div>
+            <div><dt>{t(lang, 'about.stack')}</dt><dd>{facts.stack}</dd></div>
+            <div><dt>{t(lang, 'about.location')}</dt><dd>{facts.location}</dd></div>
           </dl>
 
           <nav class="contact-links" aria-label={labels.contact}>
             <p class="contact-title">{labels.contact}</p>
-            <a href={SITE.social.email}><Mail size={18} aria-hidden="true" /><span>{SITE.social.email.replace('mailto:', '')}</span></a>
-            <a href={SITE.social.github} target="_blank" rel="noopener"><Github size={18} aria-hidden="true" /><span>GitHub</span></a>
+            <a href={email.startsWith('mailto:') ? email : `mailto:${email}`}><Mail size={18} aria-hidden="true" /><span>{email.replace('mailto:', '')}</span></a>
+            <a href={github} target="_blank" rel="noopener"><Github size={18} aria-hidden="true" /><span>GitHub</span></a>
             <a href={`${base}/rss/`}><Rss size={18} aria-hidden="true" /><span>{labels.rss}</span></a>
           </nav>
         </aside>

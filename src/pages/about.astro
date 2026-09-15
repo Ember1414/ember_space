@@ -1,7 +1,8 @@
 ---
 import AboutPage from '../components/AboutPage.astro';
 
-export const prerender = true;
+// 关于页读取 D1 中所有者编辑的内容，需动态渲染
+export const prerender = false;
 ---
 
 <AboutPage lang="zh" />

@@ -1,0 +1,145 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="关于页设置">
+  <section class="about-admin" data-about-admin>
+    <header class="page-intro">
+      <p class="eyebrow">SITE / ABOUT</p>
+      <h1 class="page-title">关于页设置</h1>
+      <p class="admin-sub">这里编辑的是公开「关于」页的内容。某项留空时，公开页会显示内置默认文案。支持 Markdown。</p>
+    </header>
+
+    <div class="about-admin-message" data-about-message role="status" aria-live="polite">正在读取当前内容…</div>
+
+    <div class="lang-tabs" role="tablist" aria-label="语言">
+      <button type="button" class="lang-tab is-active" role="tab" aria-selected="true" data-lang-tab="zh">中文</button>
+      <button type="button" class="lang-tab" role="tab" aria-selected="false" data-lang-tab="en">English</button>
+    </div>
+
+    <form class="card about-form" data-about-form>
+      <label class="field field--wide">
+        <span>个人简介（Markdown）</span>
+        <textarea name="intro" rows="10" data-field="intro" placeholder="支持 Markdown：标题、列表、链接、代码……"></textarea>
+      </label>
+      <div class="about-grid">
+        <label class="field"><span>当前状态</span><input name="status" data-field="status" autocomplete="off" placeholder="例如：接受新项目合作" /></label>
+        <label class="field"><span>技术偏好</span><input name="stack" data-field="stack" autocomplete="off" placeholder="例如：Astro / TypeScript / Cloudflare" /></label>
+        <label class="field"><span>坐标</span><input name="location" data-field="location" autocomplete="off" placeholder="例如：中国 · 成都" /></label>
+        <label class="field"><span>联系邮箱</span><input name="email" data-field="email" type="email" autocomplete="off" placeholder="留空使用站点默认" /></label>
+        <label class="field"><span>GitHub 主页</span><input name="github" data-field="github" type="url" autocomplete="off" placeholder="https://github.com/…" /></label>
+      </div>
+      <div class="about-actions">
+        <button class="button button--primary" type="submit">保存当前语言</button>
+        <small class="about-hint">保存后公开「关于」页立即生效，无需重新部署。</small>
+      </div>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  const page = document.querySelector<HTMLElement>('[data-about-admin]')!;
+  const message = page.querySelector<HTMLElement>('[data-about-message]')!;
+  const form = page.querySelector<HTMLFormElement>('[data-about-form]')!;
+  const langTabs = Array.from(page.querySelectorAll<HTMLButtonElement>('[data-lang-tab]'));
+  const fields = Array.from(page.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-field]'));
+  let currentLang: 'zh' | 'en' = 'zh';
+  let csrfToken = '';
+  const cache: Record<'zh' | 'en', Record<string, string>> = { zh: {}, en: {} };
+
+  function setMessage(text: string, kind = '') {
+    message.textContent = text;
+    message.dataset.kind = kind;
+  }
+
+  function fillForm(lang: 'zh' | 'en') {
+    const values = cache[lang];
+    for (const field of fields) field.value = values[field.dataset.field ?? ''] ?? '';
+  }
+
+  function collectForm(): Record<string, string> {
+    const values: Record<string, string> = {};
+    for (const field of fields) values[field.dataset.field ?? ''] = field.value;
+    return values;
+  }
+
+  langTabs.forEach((tab) => tab.addEventListener('click', () => {
+    cache[currentLang] = collectForm();
+    currentLang = (tab.dataset.langTab as 'zh' | 'en') || 'zh';
+    langTabs.forEach((candidate) => {
+      const active = candidate === tab;
+      candidate.classList.toggle('is-active', active);
+      candidate.setAttribute('aria-selected', String(active));
+    });
+    fillForm(currentLang);
+  }));
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    setMessage('正在保存…');
+    try {
+      const response = await fetch('/api/site-content', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
+        body: JSON.stringify({ lang: currentLang, ...collectForm() }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (response.status === 401) { window.location.href = '/admin/login/'; return; }
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : '保存失败，请稍后重试。');
+      cache[currentLang] = collectForm();
+      setMessage('已保存。公开关于页已立即更新。', 'success');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '保存失败，请稍后重试。', 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
+
+  (async () => {
+    try {
+      const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      if (meResponse.status === 401) { window.location.href = '/admin/login/'; return; }
+      const me = await meResponse.json() as { user?: { role?: string }; csrfToken?: string };
+      csrfToken = typeof me.csrfToken === 'string' ? me.csrfToken : '';
+      if (me.user?.role !== 'owner') { setMessage('只有所有者可以编辑站点内容。', 'error'); form.inert = true; return; }
+
+      const response = await fetch('/api/site-content', { credentials: 'include' });
+      if (!response.ok) throw new Error('读取站点内容失败。');
+      const data = await response.json() as { about?: { zh?: Record<string, string> | null; en?: Record<string, string> | null } };
+      cache.zh = data.about?.zh ?? {};
+      cache.en = data.about?.en ?? {};
+      fillForm(currentLang);
+      setMessage('已加载当前内容。留空的字段将使用站点默认文案。');
+    } catch {
+      setMessage('读取站点内容失败，请刷新页面重试。', 'error');
+    }
+  })();
+</script>
+
+<style>
+  .admin-sub { margin: 8px 0 0; max-width: 60ch; color: var(--text-muted); font-size: 0.9rem; }
+  .about-admin-message { min-height: 1.5em; margin: 14px 0; color: var(--text-muted); font-size: 0.88rem; }
+  .about-admin-message[data-kind='error'] { color: var(--accent-strong); }
+  .about-admin-message[data-kind='success'] { color: var(--success); }
+  .lang-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .lang-tab {
+    min-height: 40px; padding-inline: 16px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface); color: var(--text-muted); font-weight: 700; cursor: pointer;
+  }
+  .lang-tab.is-active { border-color: var(--accent); color: var(--accent); }
+  .about-form { display: grid; gap: 16px; max-width: 860px; padding: 24px; }
+  .about-form .field { display: grid; gap: 6px; }
+  .about-form .field > span { color: var(--text-soft); font-size: 0.82rem; font-weight: 750; }
+  .about-form input, .about-form textarea {
+    width: 100%; padding: 0.65rem 0.72rem; border: 1px solid var(--border-strong); border-radius: 4px;
+    background: var(--surface); color: var(--text); font: inherit;
+  }
+  .about-form textarea { resize: vertical; font-family: var(--font-mono); font-size: 0.88rem; }
+  .about-form input:focus, .about-form textarea:focus { border-color: var(--focus); outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent); }
+  .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .about-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .about-hint { color: var(--text-muted); font-size: 0.78rem; }
+</style>

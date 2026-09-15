@@ -27,6 +27,7 @@ const languageLabel = lang === 'zh' ? 'EN' : '中';
 <header class="site-header">
   <div class="header-shell">
     <a class="brand" href={base || '/'} aria-label={t(lang, 'a11y.home')}>
+      <img class="brand-avatar" data-brand-avatar src="" alt="" hidden width="22" height="22" loading="lazy" />
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">EMBER</span>
       <span class="brand-cn">余烬</span>
@@ -112,6 +113,21 @@ const languageLabel = lang === 'zh' ? 'EN' : '中';
     openButton?.setAttribute('aria-expanded', 'false');
     openButton?.focus();
   });
+
+  // 登录用户在品牌左侧显示头像；未登录或请求失败时保持隐藏
+  (async () => {
+    const avatar = document.querySelector<HTMLImageElement>('[data-brand-avatar]');
+    if (!avatar) return;
+    try {
+      const response = await fetch('/api/profile', { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json() as { profile?: { avatarUrl?: string | null } };
+      if (data.profile?.avatarUrl) {
+        avatar.src = data.profile.avatarUrl;
+        avatar.hidden = false;
+      }
+    } catch { /* 未登录或离线时保持隐藏 */ }
+  })();
 </script>
 
 <style>
@@ -147,6 +163,14 @@ const languageLabel = lang === 'zh' ? 'EN' : '中';
 
   .brand:hover {
     color: var(--text);
+  }
+
+  .brand-avatar {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    object-fit: cover;
   }
 
   .brand-mark {
