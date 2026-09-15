@@ -6,7 +6,8 @@ import { deleteImage, imageStorageAvailable } from '../../../lib/imageStore';
 
 export const prerender = false;
 
-/** 从图片存储（KV/R2）中永久删除一张图片；仅内容作者可操作。 */
+/** 从图片存储（KV/R2）中永久删除一张图片；仅内容作者可操作。
+ *  key 形如 2026/09/uuid.png（含斜杠），必须用 [...key] 通配路由才能匹配。 */
 export async function DELETE(context: APIContext): Promise<Response> {
   const auth = await authorizeWrite(context);
   if (auth instanceof Response) return auth;

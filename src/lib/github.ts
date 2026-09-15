@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SITE } from '../consts';
 
+export { repositoryUrlKey } from './repoUrl';
+
 export interface Repo {
   name: string;
   description: string | null;
@@ -14,17 +16,6 @@ export interface Repo {
 }
 
 const CACHE = path.resolve('src/data/github-repos.json');
-
-export function repositoryUrlKey(value: string | null | undefined): string | null {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    const pathname = url.pathname.replace(/\.git$/i, '').replace(/\/+$/, '').toLowerCase();
-    return pathname ? `${url.hostname.toLowerCase()}${pathname}` : null;
-  } catch {
-    return null;
-  }
-}
 
 export function formatRepositoryDate(value: string | null | undefined): string | null {
   if (!value) return null;

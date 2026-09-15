@@ -619,7 +619,7 @@ const serialized = JSON.stringify(initial).replace(/</g, '\\u003c');
       remove.disabled = true;
       try {
         const token = await getCsrf();
-        const response = await fetch(`/api/images/${encodeURIComponent(entry.key)}`, {
+        const response = await fetch(`/api/images/${entry.key.split('/').map(encodeURIComponent).join('/')}`, {
           method: 'DELETE',
           credentials: 'include',
           headers: token ? { 'x-csrf-token': token } : {},

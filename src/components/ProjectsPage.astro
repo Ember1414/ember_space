@@ -32,8 +32,23 @@ const curatedRepoKeys = new Set(
 const uncuratedRepos = repos.filter((repo) => !curatedRepoKeys.has(repositoryUrlKey(repo.html_url) ?? ''));
 
 const labels = isZh
-  ? { eyebrow: 'PROJECTS / 构建记录', emptyTitle: '项目列表暂时不可用', emptyText: '你仍可前往 GitHub 查看全部公开仓库。' }
-  : { eyebrow: 'PROJECTS / BUILD NOTES', emptyTitle: 'Project data is unavailable', emptyText: 'You can still browse every public repository on GitHub.' };
+  ? {
+      eyebrow: 'PROJECTS / 构建记录',
+      emptyTitle: '项目列表暂时不可用',
+      emptyText: '你仍可前往 GitHub 查看全部公开仓库。',
+      contributions: 'GitHub 贡献记录',
+      contributionsAlt: 'GitHub 贡献热力图',
+      viewProfile: '在 GitHub 查看主页',
+    }
+  : {
+      eyebrow: 'PROJECTS / BUILD NOTES',
+      emptyTitle: 'Project data is unavailable',
+      emptyText: 'You can still browse every public repository on GitHub.',
+      contributions: 'GitHub contributions',
+      contributionsAlt: 'GitHub contribution heatmap',
+      viewProfile: 'View profile on GitHub',
+    };
+const githubUser = SITE.social.github.split('/').pop() ?? '';
 ---
 
 <BaseLayout
@@ -50,6 +65,29 @@ const labels = isZh
         <h1 class="page-title">{t(lang, 'projects.title')}</h1>
         <p class="page-sub">{t(lang, 'projects.subtitle')}</p>
       </header>
+
+      {githubUser && (
+        <section class="contributions anim" aria-label={labels.contributions}>
+          <header class="section-head">
+            <p class="eyebrow"><Github size={15} aria-hidden="true" /> {labels.contributions}</p>
+          </header>
+          <a
+            class="contributions-frame"
+            href={SITE.social.github}
+            target="_blank"
+            rel="noopener"
+            title={labels.viewProfile}
+          >
+            <img
+              src={`https://ghchart.rshah.org/${githubUser}`}
+              alt={labels.contributionsAlt}
+              width="828"
+              height="128"
+              loading="lazy"
+            />
+          </a>
+        </section>
+      )}
 
       {curated.length > 0 && (
         <section class="projects-section anim" aria-labelledby={`featured-projects-${lang}`}>
@@ -96,4 +134,21 @@ const labels = isZh
   .projects-section + .projects-section { margin-top: 56px; }
   .section-head .eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 0.45rem; }
   .github-link { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; font-weight: 700; }
+  .contributions { margin-top: 36px; }
+  .contributions + .projects-section { margin-top: 56px; }
+  .contributions-frame {
+    display: block;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+  .contributions-frame img {
+    display: block;
+    width: 100%;
+    max-width: 828px;
+    height: auto;
+    margin-inline: auto;
+  }
 </style>

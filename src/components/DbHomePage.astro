@@ -9,6 +9,8 @@ import { SITE } from '../consts';
 import type { Lang } from '../i18n/ui';
 import { t, tf } from '../i18n/ui';
 import { getCollection } from 'astro:content';
+import { repositoryUrlKey } from '../lib/repoUrl';
+import reposCache from '../data/github-repos.json';
 import '../styles/pages/home.css';
 
 interface Props { lang: Lang; posts: PostSummary[]; }
@@ -22,10 +24,19 @@ const emptyText = lang === 'zh' ? '这里会展示经过整理的工程笔记与
 const tagCount = new Set(posts.flatMap((post) => post.tags)).size;
 const establishedMs = Date.parse(SITE.established);
 const siteDays = Number.isFinite(establishedMs) ? Math.max(1, Math.floor((Date.now() - establishedMs) / 86_400_000) + 1) : 0;
+// 收录项目数 = 项目页实际展示数：GitHub 仓库（构建期缓存）+ 未被仓库覆盖的策划条目，按仓库地址去重
+const repoKeys = new Set(
+  reposCache.map((repo) => repositoryUrlKey(repo.html_url) ?? '').filter(Boolean),
+);
+const curatedOnly = projects.filter((project) => {
+  const key = repositoryUrlKey(project.data.repo) ?? '';
+  return !key || !repoKeys.has(key);
+}).length;
+const projectTotal = repoKeys.size + curatedOnly;
 const stats = [
   { value: String(posts.length), label: lang === 'zh' ? '已发布文章' : 'Posts published' },
   { value: String(tagCount), label: lang === 'zh' ? '主题标签' : 'Topics' },
-  { value: String(projects.length), label: lang === 'zh' ? '收录项目' : 'Projects' },
+  { value: String(projectTotal), label: lang === 'zh' ? '收录项目' : 'Projects' },
   ...(siteDays ? [{ value: String(siteDays), label: lang === 'zh' ? '建站天数' : 'Days online' }] : []),
 ];
 ---
