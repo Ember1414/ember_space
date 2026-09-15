@@ -6,24 +6,24 @@
   align-items: start;
 }
 
-::where(.home-page) .home-stats-band {
+:where(.home-page) .home-stats-band {
   border-bottom: 1px solid var(--border);
   background: var(--bg);
 }
 
-::where(.home-page) .home-stats {
+:where(.home-page) .home-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
   padding-block: 24px;
 }
 
-::where(.home-page) .stat {
+:where(.home-page) .stat {
   display: grid;
   gap: 2px;
 }
 
-::where(.home-page) .stat-num {
+:where(.home-page) .stat-num {
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 1.7rem;
@@ -31,7 +31,7 @@
   line-height: 1.1;
 }
 
-::where(.home-page) .stat-label {
+:where(.home-page) .stat-label {
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -39,7 +39,7 @@
   text-transform: uppercase;
 }
 
-::where(.home-page) .home-recent {
+:where(.home-page) .home-recent {
   padding-block: 8px;
   padding-inline: 28px;
   border: 1px solid var(--border);
@@ -48,26 +48,57 @@
   box-shadow: var(--shadow-sm);
 }
 
-::where(.home-page) .home-recent .post-item:first-child {
+:where(.home-page) .home-recent .post-item:first-child {
   border-top: 0;
 }
 
-::where(.home-page) .feature-post,
-::where(.home-page) .featured-project .project-card {
+:where(.home-page) .feature-post,
+:where(.home-page) .featured-project .project-card {
   transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-::where(.home-page) .feature-post:hover,
-::where(.home-page) .featured-project .project-card:hover {
+:where(.home-page) .feature-post:hover,
+:where(.home-page) .featured-project .project-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+:where(.home-page) .feature-grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 24px;
 }
 
 :where(.home-page) .feature-grid > div {
   min-width: 0;
 }
 
-:where(.home-page) .feature-post,
+/* 本期重点卡片被拉伸到与右侧项目卡等高：
+   内容纵向弹性分布（简介居中、链接贴底），消除大片留白 */
+:where(.home-page) .feature-post .card-body {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 26px 30px;
+}
+
+:where(.home-page) .feature-post h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.65rem;
+  line-height: 1.28;
+}
+
+:where(.home-page) .feature-post .card-body > p:not(.feature-label) {
+  margin: 0 0 18px;
+  color: var(--text-soft);
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+:where(.home-page) .feature-meta {
+  margin-block: auto 14px;
+}
+
 :where(.home-page) .featured-project,
 :where(.home-page) .home-empty {
   height: 100%;
@@ -165,6 +196,18 @@
 
   :where(.home-page) .home-recent {
     padding-inline: 20px;
+  }
+
+  :where(.home-page) .feature-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :where(.home-page) .feature-post .card-body {
+    padding: 22px;
+  }
+
+  :where(.home-page) .feature-post h3 {
+    font-size: 1.4rem;
   }
 
   :where(.home-page) .home-empty {
